@@ -1,0 +1,7 @@
+test_*
+note.md
+plan.md
+project.md
+__pycache__
+.env
+venv
