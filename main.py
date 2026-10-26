@@ -13,6 +13,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from graph import build_sdr_graph
 from config import get_llm
 from agents.copywriter import COPYWRITER_SYSTEM_PROMPT
+from psycopg_pool import ConnectionPool
+from langgraph.checkpoint.postgres import PostgresSaver
+import os
 
 # Pre-configured B2B Test Profiles
 PRESET_ACCOUNTS = {
@@ -53,7 +56,21 @@ def run_campaign_interactive(company: str, role: str, name: str, email: str):
     print(f"[*] Target Email: {email}")
 
     # 1. Compile graph with checkpointer and safety gate
-    checkpointer = MemorySaver()
+    postgres_uri = os.getenv("POSTGRES_URI", "").strip()
+    checkpointer = None
+
+    if postgres_uri:
+        try:
+            pool = ConnectionPool(conninfo=postgres_uri, max_size=10, kwargs={"autocommit": True})
+            checkpointer = PostgresSaver(pool)
+            checkpointer.setup()
+            print("  [✓] Connected to PostgreSQL Checkpointer (Docker)")
+        except Exception as e:
+            print(f"  [!] Postgres unavailable ({e}), using MemorySaver fallback.")
+            checkpointer = MemorySaver()
+    else:
+        checkpointer = MemorySaver()
+
     app = build_sdr_graph(checkpointer=checkpointer, interrupt_before=["dispatcher"])
 
     thread_id = f"campaign-{uuid.uuid4().hex[:8]}"
