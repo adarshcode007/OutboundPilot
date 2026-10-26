@@ -36,8 +36,15 @@ class MultiAgentSDRState(TypedDict):
     email_draft: str                      # Tailored 3-paragraph executive proposal
 
     # Orchestration & Control Flow (Governed by Supervisor)
-    next_step: Literal["researcher", "analyst", "copywriter", "dispatcher", "FINISH"]
+    next_step: Literal["researcher", "analyst", "copywriter", "evaluator", "dispatcher", "FINISH"]
 
     # Human-in-the-Loop (HITL)
     approval_status: Literal["PENDING", "APPROVED", "REJECTED"]
+
+    # Evaluator Guardrail Artifacts (Populated by Evaluator Node)
+    eval_score: int                       # Quality score 1 to 10
+    eval_verdict: str                     # "PASS" or "NEEDS_REVISION"
+    eval_critique: str                    # Judge feedback
+    eval_attempts: int                    # Loop counter to prevent infinite revision loops
+
 

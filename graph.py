@@ -17,6 +17,7 @@ from agents.supervisor import supervisor_node
 from agents.researcher import researcher_node
 from agents.analyst import analyst_node
 from agents.copywriter import copywriter_node
+from agents.evaluator import evaluator_node
 
 def dispatcher_node(state: MultiAgentSDRState) -> dict:
     """Outbound Dispatcher Node.
@@ -81,6 +82,7 @@ def build_sdr_graph(checkpointer=None, interrupt_before: Optional[list] = None):
     workflow.add_node("researcher", researcher_node)
     workflow.add_node("analyst", analyst_node)
     workflow.add_node("copywriter", copywriter_node)
+    workflow.add_node("evaluator", evaluator_node)
     workflow.add_node("dispatcher", dispatcher_node)
 
     # 3. Define Entry Edge: Start at the Supervisor
@@ -94,6 +96,7 @@ def build_sdr_graph(checkpointer=None, interrupt_before: Optional[list] = None):
             "researcher": "researcher",
             "analyst": "analyst",
             "copywriter": "copywriter",
+            "evaluator": "evaluator",
             "dispatcher": "dispatcher",
             END: END,
         }
@@ -103,6 +106,7 @@ def build_sdr_graph(checkpointer=None, interrupt_before: Optional[list] = None):
     workflow.add_edge("researcher", "supervisor")
     workflow.add_edge("analyst", "supervisor")
     workflow.add_edge("copywriter", "supervisor")
+    workflow.add_edge("evaluator", "supervisor")
 
     # 6. Dispatcher terminates the pipeline
     workflow.add_edge("dispatcher", END)

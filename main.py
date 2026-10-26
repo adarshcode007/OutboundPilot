@@ -116,10 +116,16 @@ def run_campaign_interactive(company: str, role: str, name: str, email: str):
         print("  Token Savings: No email was drafted, preserving LLM cost and sales rep time.")
         return
     
+    eval_score = snapshot.values.get("eval_score", "N/A")
+    eval_verdict = snapshot.values.get("eval_verdict", "PENDING")
+    critique = snapshot.values.get("eval_critique", "No critique")
+    
     # 3. Human-in-the-Loop Safety Gate
     print("\n" + "=" * 70)
     print("⏸️  HUMAN-IN-THE-LOOP SAFETY GATE: ACTION REQUIRED")
     print("=" * 70)
+    print(f"🛡️  AI QUALITY GUARDRAIL: Score {eval_score}/10 [{eval_verdict}]")
+    print(f"   Judge Feedback: {critique}")
     print(f"Target Recipient: {email}")
     print(f"\nProposed Email Proposal:\n\n{draft}\n")
     print("-" * 70)
