@@ -5,3 +5,4 @@ project.md
 __pycache__
 .env
 venv
+.agents

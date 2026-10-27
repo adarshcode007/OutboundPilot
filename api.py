@@ -33,6 +33,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # Enable CORS for frontend applications (React, Next.js, Vite)
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +44,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static assets from built React frontend
+if os.path.exists("frontend/dist/assets"):
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+if os.path.exists("frontend/dist"):
+    app.mount("/app", StaticFiles(directory="frontend/dist", html=True), name="frontend_dist")
+elif os.path.exists("frontend"):
+    app.mount("/app", StaticFiles(directory="frontend", html=True), name="frontend")
 
 # Initialize Checkpointer (Docker PostgreSQL with MemorySaver fallback)
 POSTGRES_URI = os.getenv("POSTGRES_URI", "").strip()
@@ -95,16 +106,14 @@ class HumanActionRequest(BaseModel):
 
 @app.get("/")
 def root():
+    if os.path.exists("frontend/dist/index.html"):
+        return FileResponse("frontend/dist/index.html")
+    if os.path.exists("frontend/index.html"):
+        return FileResponse("frontend/index.html")
     return {
         "status": "online",
         "service": "Autonomous B2B Digital SDR Workforce API",
-        "endpoints": {
-            "start_campaign": "POST /api/campaign/start",
-            "get_state": "GET /api/campaign/{thread_id}",
-            "human_action": "POST /api/campaign/{thread_id}/action",
-            "list_campaigns": "GET /api/campaigns",
-            "docs": "/docs",
-        },
+        "docs": "/docs",
     }
 
 
