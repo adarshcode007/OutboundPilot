@@ -9,7 +9,6 @@ Key Responsibilities:
     'QUEUED' -> 'PROCESSING' -> 'DRAFTED' (paused at HITL gate) -> 'APPROVED' / 'DISQUALIFIED' -> 'DISPATCHED'
 """
 
-from api import POSTGRES_URI
 import os
 import uuid
 import json

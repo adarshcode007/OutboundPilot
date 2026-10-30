@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+load_dotenv()
 
 from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.postgres import PostgresSaver
@@ -25,13 +26,29 @@ from config import get_llm
 from agents.copywriter import COPYWRITER_SYSTEM_PROMPT
 from agents.evaluator import evaluate_email_draft
 
-load_dotenv()
+import time
+from prioritizer import prioritize_leads_batch
+from queue_manager import (
+    init_queue_schema,
+    insert_leads_batch,
+    get_daily_quota_stats,
+    list_queued_leads,
+    get_lead_by_id,
+    update_lead_status,
+)
 
 app = FastAPI(
     title="Autonomous Outbound SDR API",
     description="Enterprise Multi-Agent Pipeline with PostgreSQL Checkpointing & HITL Review",
     version="1.0.0",
 )
+
+# Initialize PostgreSQL Lead Queue table
+try:
+    init_queue_schema()
+    print(">> [API] Initialized PostgreSQL lead_queue schema.")
+except Exception as e:
+    print(f">> [API] Failed to initialize lead_queue ({e}).")
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -99,6 +116,11 @@ class HumanActionRequest(BaseModel):
         default=None, description="Natural language feedback for AI Copywriter if action is REDRAFT"
     )
 
+class LeadBatchUploadRequest(BaseModel):
+    leads: list[dict] = Field(..., description="List of raw lead dictionaries from CSV")
+
+class ProcessSelectedLeadsRequest(BaseModel):
+    lead_ids: list[str] = Field(..., description="Array of lead UUIDs to process")
 
 # ---------------------------------------------------------------------------
 # API Endpoints
@@ -310,3 +332,125 @@ def list_all_campaigns():
                 "total_campaigns": len(rows),
                 "campaigns": [{"thread_id": r[0], "total_steps": r[1]} for r in rows],
             }
+
+# Milestone 10 & 11: Lead Queue, Smart Prioritization & Quota Endpoints
+@app.post("/api/leads/upload")
+def upload_leads_batch(payload: LeadBatchUploadRequest):
+    """Uploads, scores via Regex (0 tokens), and queues leads in PostgreSQL."""
+    if not payload.leads:
+        raise HTTPException(status_code=400, detail="No leads provided.")
+
+    # 1. Score leads using deterministic regex heuristics (Milestone 9)
+    scored_leads = prioritize_leads_batch(payload.leads)
+
+    # 2. Insert into PostgreSQL queue
+    batch_id = insert_leads_batch(scored_leads)
+
+    return {
+        "status": "SUCCESS",
+        "batch_id": batch_id,
+        "total_uploaded": len(scored_leads),
+        "leads": scored_leads,
+    }
+
+@app.get("/api/leads")
+def get_leads_queue(status: Optional[str] = None, limit: int = 100):
+    """Retrieves queued leads sorted by priority along with daily quota stats."""
+    quota_stats = get_daily_quota_stats()
+    leads = list_queued_leads(status=status, limit=limit)
+    return {
+        "quota": quota_stats,
+        "total_leads": len(leads),
+        "leads": leads,
+    }
+
+@app.post("/api/leads/process-selected")
+def process_selected_leads(payload: ProcessSelectedLeadsRequest, background_tasks: BackgroundTasks):
+    """Processes selected leads sequentially with Groq quota protection."""
+    quota_stats = get_daily_quota_stats()
+    remaining = quota_stats["remaining_today"]
+
+    if len(payload.lead_ids) > remaining:
+        raise HTTPException(status_code=429, detail=f"Requested {len(payload.lead_ids)} leads, but only {remaining} remaining in today's quota ({quota_stats['daily_limit']} max/day).")
+    
+    def run_batch():
+        for lead_id in payload.lead_ids:
+            lead = get_lead_by_id(lead_id)
+            if not lead or lead["status"] in ["DRAFTED", "APPROVED", "DISPATCHED"]:
+                continue
+
+            # Mark in progress
+            update_lead_status(lead_id, status="PROCESSING")
+            thread_id = f"camp_{uuid.uuid4().hex[:8]}"
+            thread_config = {"configurable": {"thread_id": thread_id}}
+            initial_state = {
+                "messages": [HumanMessage(content=f"Launch outbound campaign for {lead['contact_name']} at {lead['company']}")],
+                "target_company": lead["company"],
+                "target_role": lead.get("role", "Target Role"),
+                "target_contact_name": lead.get("contact_name", "Target"),
+                "target_contact_email": lead.get("contact_email", "target@company.com"),
+                "research_summary": "",
+                "icp_fit_score": 0,
+                "icp_rationale": "",
+                "email_draft": "",
+                "next_step": "researcher",
+                "approval_status": "PENDING",
+            }
+
+            try:
+                # Runs upto HITL review gate (interrupt_before=["dispatcher"])
+                sdr_graph.invoke(initial_state, config=thread_config)
+                snapshot = sdr_graph.get_state(thread_config)
+                values = snapshot.values
+
+                is_disqualified = values.get("icp_fit_score", 0) < 5
+                final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
+
+                update_lead_status(
+                    lead_id=lead_id,
+                    status=final_status,
+                    thread_id=thread_id,
+                    research_summary=values.get("research_summary"),
+                    icp_fit_score=values.get("icp_fit_score"),
+                    icp_rationale=values.get("icp_rationale"),
+                    email_draft=values.get("email_draft"),
+                    eval_score=values.get("eval_score"),
+                    eval_verdict=values.get("eval_verdict"),
+                    eval_critique=values.get("eval_critique")
+                )
+            except Exception as e:
+                print(f">> [Batch Error] Lead {lead_id} failed: {e}")
+                update_lead_status(lead_id, status="FAILED")
+            
+            # 2-second rate-limiting throttle between leads to protect Groq TPM
+            time.sleep(2.0)
+    background_tasks.add_task(run_batch)
+
+    return {
+        "status": "ACCEPTED",
+        "message": f"Processing {len(payload.lead_ids)} leads in background with rate-limiting.",
+        "remaining_today": remaining - len(payload.lead_ids),
+    }
+
+@app.post("/api/leads/cron-trigger")
+def trigger_daily_cron(background_tasks: BackgroundTasks):
+    """Simulates daily 8:00 AM cron drip, auto-picking top priority queued leads up to quota."""
+    quota_stats = get_daily_quota_stats()
+    remaining = quota_stats["remaining_today"]
+
+    if remaining <= 0:
+        return {
+            "status": "SKIPPED",
+            "message": "Today's quota already exhausted. Resheduling for tomorrow.",
+            "quota": quota_stats,
+        }
+    
+    queued_leads = list_queued_leads(status="QUEUED", limit=remaining)
+    lead_ids = [l["id"] for l in queued_leads]
+
+    if not lead_ids:
+        return {"status": "IDLE", "message": "No unexecuted leads in queue."}
+    
+    # Delegate to process_selected_leads
+    req = ProcessSelectedLeadsRequest(lead_ids=lead_ids)
+    return process_selected_leads(req, background_tasks)
