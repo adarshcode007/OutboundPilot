@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { PRESETS } from '../data/presets';
 
+import CsvUploader from './CsvUploader';
+import LeadTable from './LeadTable';
+import MorningBriefing from './MorningBriefing';
+
 const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
 
 export default function CommandCenter({ onNavigate, selectedPreset }) {
@@ -32,6 +36,12 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
+  // Batch Queue & Briefing State
+  const [activeTab, setActiveTab] = useState("single");
+  const [queueLeads, setQueueLeads] = useState([]);
+  const [quotaStats, setQuotaStats] = useState({ daily_limit: 10, used_today: 0, remaining_today: 10 });
+  const [showBriefing, setShowBriefing] = useState(false);
+
   // Fetch PostgreSQL campaign history
   useEffect(() => {
     fetchHistory();
@@ -48,6 +58,23 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       console.warn("Could not reach backend:", e);
     }
   };
+
+  const fetchLeads = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/leads`);
+      if (res.ok) {
+        const data = await res.json();
+        setQueueLeads(data.leads || []);
+        if (data.quota) setQuotaStats(data.quota);
+      }
+    } catch (e) {
+      console.warn("Could not reach /api/leads: ", e);
+    }
+  }
+
+  useEffect(() => {
+    fetchLeads();
+  }, [])
 
   // Poll current campaign state
   useEffect(() => {
@@ -156,8 +183,8 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       {/* Top Navbar */}
       <header className="workspace-navbar">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             style={{ fontSize: "0.82rem", padding: "6px 12px" }}
             onClick={() => onNavigate("landing")}
           >
@@ -191,9 +218,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           <div>
             <div className="sidebar-heading">Preset Target Accounts</div>
             {PRESETS.map((p, i) => (
-              <div 
-                key={i} 
-                className="preset-item" 
+              <div
+                key={i}
+                className="preset-item"
                 onClick={() => selectPreset(p)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -215,9 +242,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               </div>
             ) : (
               campaignHistory.slice(0, 10).map((c, i) => (
-                <div 
-                  key={i} 
-                  className="preset-item" 
+                <div
+                  key={i}
+                  className="preset-item"
                   style={{ padding: "8px 12px" }}
                   onClick={() => setThreadId(c.thread_id)}
                 >
@@ -237,65 +264,100 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
         {/* Main Interactive Workspace Canvas */}
         <main className="workspace-main">
-          {/* Target Account Ingestion Form */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">
-                <span>🎯</span> Target Account Ingestion
-              </div>
-              {loading && <span className="tag tag-warning pulse-anim">Swarm Active</span>}
-            </div>
-
-            <form onSubmit={handleStart} className="form-grid">
-              <div className="form-group">
-                <label>Company Domain / Name</label>
-                <input 
-                  value={company} 
-                  onChange={e => setCompany(e.target.value)} 
-                  required 
-                  placeholder="e.g. Stripe, OpenAI, Datadog" 
-                />
-              </div>
-              <div className="form-group">
-                <label>Target Executive Role</label>
-                <input 
-                  value={role} 
-                  onChange={e => setRole(e.target.value)} 
-                  required 
-                  placeholder="e.g. VP of Engineering" 
-                />
-              </div>
-              <div className="form-group">
-                <label>Contact Name</label>
-                <input 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  required 
-                  placeholder="e.g. David" 
-                />
-              </div>
-              <div className="form-group">
-                <label>Contact Email</label>
-                <input 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)} 
-                  required 
-                  placeholder="e.g. david@stripe.com" 
-                />
-              </div>
-
-              <div style={{ gridColumn: "span 2", marginTop: "0.5rem" }}>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary" 
-                  style={{ width: "100%", padding: "12px" }} 
-                  disabled={loading}
-                >
-                  {loading ? "Multi-Agent Swarm Orchestrating..." : "🚀 Launch Autonomous SDR Swarm"}
-                </button>
-              </div>
-            </form>
+          {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue */}
+          <div style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "0.5rem" }}>
+            <button
+              className={`btn ${activeTab === 'single' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              onClick={() => setActiveTab("single")}
+            >
+              🎯 Single Lead Ingestion
+            </button>
+            <button
+              className={`btn ${activeTab === 'batch' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              onClick={() => { setActiveTab("batch"); fetchLeads(); }}
+            >
+              📁 Batch CSV & Lead Queue ({queueLeads.length})
+            </button>
           </div>
+
+          {activeTab === "single" && (
+            /* Target Account Ingestion Form */
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">
+                  <span>🎯</span> Target Account Ingestion
+                </div>
+                {loading && <span className="tag tag-warning pulse-anim">Swarm Active</span>}
+              </div>
+
+              <form onSubmit={handleStart} className="form-grid">
+                <div className="form-group">
+                  <label>Company Domain / Name</label>
+                  <input
+                    value={company}
+                    onChange={e => setCompany(e.target.value)}
+                    required
+                    placeholder="e.g. Stripe, OpenAI, Datadog"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Target Executive Role</label>
+                  <input
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    required
+                    placeholder="e.g. VP of Engineering"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Contact Name</label>
+                  <input
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    required
+                    placeholder="e.g. David"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Contact Email</label>
+                  <input
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="e.g. david@stripe.com"
+                  />
+                </div>
+
+                <div style={{ gridColumn: "span 2", marginTop: "0.5rem" }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    style={{ width: "100%", padding: "12px" }}
+                    disabled={loading}
+                  >
+                    {loading ? "Multi-Agent Swarm Orchestrating..." : "🚀 Launch Autonomous SDR Swarm"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {activeTab === "batch" && (
+            <div>
+              {/* CSV Upload & Header Auto-Mapper */}
+              <CsvUploader onUploadSuccess={() => fetchLeads()} />
+
+              {/* Prioritized Lead Table with Multi-Select & Quota */}
+              <LeadTable
+                leads={queueLeads}
+                quota={quotaStats}
+                onRefresh={fetchLeads}
+                onOpenBriefing={() => setShowBriefing(true)}
+              />
+            </div>
+          )}
 
           {/* Campaign Lifecycle Stepper */}
           {threadId && (
@@ -305,11 +367,10 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                   <span>🔄</span> Campaign Lifecycle: <span style={{ fontFamily: "JetBrains Mono", color: "var(--primary)" }}>{threadId}</span>
                 </div>
                 {campaignState && (
-                  <span className={`tag ${
-                    campaignState.ui_status === 'AWAITING_HUMAN_REVIEW' ? 'tag-warning' :
+                  <span className={`tag ${campaignState.ui_status === 'AWAITING_HUMAN_REVIEW' ? 'tag-warning' :
                     campaignState.ui_status === 'DISPATCHED' ? 'tag-success' :
-                    campaignState.ui_status === 'DISQUALIFIED' ? 'tag-danger' : 'tag-info'
-                  }`}>
+                      campaignState.ui_status === 'DISQUALIFIED' ? 'tag-danger' : 'tag-info'
+                    }`}>
                     {campaignState.ui_status}
                   </span>
                 )}
@@ -412,9 +473,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
               <div className="form-group" style={{ marginBottom: "1.2rem" }}>
                 <label>Executive Outreach Proposal (Editable Before Sending)</label>
-                <textarea 
-                  value={editableDraft} 
-                  onChange={e => setEditableDraft(e.target.value)} 
+                <textarea
+                  value={editableDraft}
+                  onChange={e => setEditableDraft(e.target.value)}
                   rows={6}
                 />
               </div>
@@ -423,14 +484,14 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", padding: "14px", borderRadius: "8px", marginBottom: "1.2rem" }}>
                 <label style={{ color: "#a5b4fc" }}>💬 Natural Language Feedback for AI Copywriter (Optional)</label>
                 <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-                  <input 
-                    value={critique} 
-                    onChange={e => setCritique(e.target.value)} 
+                  <input
+                    value={critique}
+                    onChange={e => setCritique(e.target.value)}
                     placeholder="e.g. 'Shorten to under 50 words and emphasize security compliance'"
                   />
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={() => handleAction("REDRAFT")}
                     disabled={actionLoading || !critique.trim()}
                   >
@@ -441,15 +502,15 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
               {/* Action Controls */}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-                <button 
-                  className="btn btn-danger" 
+                <button
+                  className="btn btn-danger"
                   onClick={() => handleAction("REJECT")}
                   disabled={actionLoading}
                 >
                   🛑 Reject Lead
                 </button>
-                <button 
-                  className="btn btn-success" 
+                <button
+                  className="btn btn-success"
                   onClick={() => handleAction("APPROVE")}
                   disabled={actionLoading}
                 >
@@ -476,6 +537,15 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           )}
         </main>
       </div>
+
+      {/* Morning SDR Briefing Card-Swipe Modal */}
+      {showBriefing && (
+        <MorningBriefing
+          leads={queueLeads}
+          onClose={() => setShowBriefing(false)}
+          onRefresh={fetchLeads}
+        />
+      )}
     </div>
   );
 }
