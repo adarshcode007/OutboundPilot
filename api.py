@@ -37,6 +37,8 @@ from queue_manager import (
     update_lead_status,
 )
 
+from scheduler import scheduler
+
 app = FastAPI(
     title="Autonomous Outbound SDR API",
     description="Enterprise Multi-Agent Pipeline with PostgreSQL Checkpointing & HITL Review",
@@ -441,7 +443,7 @@ def trigger_daily_cron(background_tasks: BackgroundTasks):
     if remaining <= 0:
         return {
             "status": "SKIPPED",
-            "message": "Today's quota already exhausted. Resheduling for tomorrow.",
+            "message": "Today's quota already exhausted. Rescheduling for tomorrow.",
             "quota": quota_stats,
         }
     
@@ -454,3 +456,35 @@ def trigger_daily_cron(background_tasks: BackgroundTasks):
     # Delegate to process_selected_leads
     req = ProcessSelectedLeadsRequest(lead_ids=lead_ids)
     return process_selected_leads(req, background_tasks)
+
+
+# Autonomous Background Scheduler Lifecycle & Control Endpoints
+
+@app.on_event("startup")
+async def startup_scheduler():
+    """Starts the background 8:00 AM cron daemon when FastAPI boots."""
+    scheduler.start()
+    print(">> [FastAPI] Background SDR Scheduler daemon started.")
+
+@app.on_event("shutdown")
+async def shutdown_scheduler():
+    """Stops the background scheduler when FastAPI shuts down."""
+    scheduler.stop()
+    print(">> [FastAPI] Background SDR Scheduler daemon stopped.")
+
+@app.get("/api/scheduler/status")
+def get_scheduler_status():
+    """Returns the live status, schedule time, and next estimated run."""
+    return scheduler.get_status()
+
+@app.post('/api/scheduler/run-now')
+async def run_scheduler_now(background_tasks: BackgroundTasks):
+    """Force-triggers the autonomous morning drip immediately in the background."""
+    if scheduler.is_processing:
+        return {"status": "BUSY", "message": "Scheduler is already running a drip batch."}
+    
+    background_tasks.add_task(scheduler.execute_drip, force=True)
+    return {
+        "status": "ACCEPTED",
+        "message": "Immediate morning drip launched in background.",
+    }
