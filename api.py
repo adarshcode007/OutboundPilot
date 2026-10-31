@@ -7,6 +7,7 @@ REST API Endpoints:
 4. GET  /api/campaigns               - List all historical campaigns from PostgreSQL
 """
 
+from agents import cadence
 import os
 import uuid
 from typing import Optional, Literal
@@ -35,9 +36,12 @@ from queue_manager import (
     list_queued_leads,
     get_lead_by_id,
     update_lead_status,
+    save_lead_cadence,
+    get_lead_cadence
 )
 
 from scheduler import scheduler
+from agents.cadence import generate_outbound_cadence
 
 app = FastAPI(
     title="Autonomous Outbound SDR API",
@@ -488,3 +492,36 @@ async def run_scheduler_now(background_tasks: BackgroundTasks):
         "status": "ACCEPTED",
         "message": "Immediate morning drip launched in background.",
     }
+
+
+# Multi-Touch Follow-Up Cadence Endpoints
+@app.post("/api/leads/{lead_id}/cadence/generate")
+def generate_cadence_endpoint(lead_id: str):
+    """Generates an automated 3-touch cadence for a lead using verified research and initial pitch."""
+    lead = get_lead_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found.")
+    
+    cadence = generate_outbound_cadence(
+        company=lead["company"],
+        contact_name=lead.get("contact_name") or "Decision Maker",
+        role=lead.get("role") or "Executive",
+        research_summary=lead.get("research_summary") or f"{lead['company']} is a target enterprise account.",
+        initial_draft=lead.get("email_draft") or "",
+    )
+
+    save_lead_cadence(lead_id, cadence)
+    return {"status": "SUCCESS", "cadence": cadence}
+
+@app.get("/api/leads/{lead_id}/cadence")
+def get_cadence_enpoint(lead_id: str):
+    """Retrieves the stored 3-touch cadence for a lead."""
+    lead = get_lead_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found.")
+    
+    cadence = get_lead_cadence(lead_id)
+    if not cadence:
+        raise HTTPException(status_code=404, detail="No cadence generates for this lead yet.")
+    return {"status": "SUCCESS", "cadence": cadence}
+

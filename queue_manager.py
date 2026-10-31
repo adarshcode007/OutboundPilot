@@ -52,6 +52,23 @@ def init_queue_schema():
                     processed_at TIMESTAMP WITH TIME ZONE
                 );
 
+                ALTER TABLE lead_queue ADD COLUMN IF NOT EXISTS cadence JSONB;
+                CREATE TABLE IF NOT EXISTS dispatch_ledger (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    lead_id UUID,
+                    thread_id VARCHAR(64),
+                    recipient VARCHAR(255) NOT NULL,
+                    subject TEXT NOT NULL,
+                    body_preview TEXT,
+                    provider VARCHAR(32) NOT NULL,
+                    message_id VARCHAR(128) NOT NULL,
+                    status VARCHAR(32) DEFAULT 'DELIVERED',
+                    error_message TEXT,
+                    dispatched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_dispatch_ledger_recipient ON dispatch_ledger(recipient);
+
                 CREATE INDEX IF NOT EXISTS idx_lead_queue_priority ON lead_queue(status, priority_score DESC);
                 CREATE INDEX IF NOT EXISTS idx_lead_queue_batch ON lead_queue(batch_id);
                 CREATE INDEX IF NOT EXISTS idx_lead_queue_processed ON lead_queue(processed_at);
@@ -210,3 +227,82 @@ def update_lead_status(
                     eval_critique, now, lead_id
                 )
             )
+
+def save_lead_cadence(lead_id: str, cadence_data: Dict[str,Any]) -> bool:
+    """Stores the generated 3-touch cadence JSON into lead_queue."""
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE lead_queue
+                SET cadence = %s
+                WHERE id = %s
+                """,
+                (json.dumps(cadence_data), lead_id)
+            )
+    return True
+
+def get_lead_cadence(lead_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves the stored cadence for a lead."""
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT cadence FROM lead_queue WHERE id = %s",(lead_id,))
+            row = cur.fetchone()
+            if row and row[0]:
+                return row[0] if isinstance(row[0], dict) else json.loads(row[0])
+    return None
+
+def log_dispatch_event(
+    recipient: str,
+    subject: str,
+    body: str,
+    provider: str,
+    message_id: str,
+    status: str = "DELIVERED",
+    error_message: Optional[str] = None,
+    lead_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
+) -> str:
+    """Logs an email dispatch event into the PostgreSQL dispatch_ledger."""
+    body_preview = body[:200] if body else ""
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO dispatch_ledger (
+                    lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message)
+            )
+            ledger_id = cur.fetchone()[0]
+    return str(ledger_id)
+
+def list_dispatch_ledger(limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieves recent email dispatches from PostgreSQL."""
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, dispatched_at
+                FROM dispatch_ledger
+                ORDER BY dispatched_at DESC
+                LIMIT %s
+                """,
+                (limit,)
+            )
+            rows = cur.fetchall()
+            return [{
+                "id": str(r[0]),
+                "lead_id": str(r[1]) if r[1] else None,
+                "thread_id": r[2],
+                "recipient": r[3],
+                "subject": r[4],
+                "body_preview": r[5],
+                "provider": r[6],
+                "message_id": r[7],
+                "status": r[8],
+                "error_message": r[9],
+                "dispatched_at": r[10].isoformat() if r[10] else None
+            } for r in rows]

@@ -8,6 +8,7 @@ Enterprise Pattern:
   protected behind human approval.
 """
 
+from dispatcher import dispatch_outbound_email
 from langchain_core.tools import tool
 from langchain_community.tools import DuckDuckGoSearchRun
 search = DuckDuckGoSearchRun()
@@ -101,10 +102,13 @@ def send_outbound_email(to_email: str, subject: str, body: str) -> str:
     Returns:
         Delivery confirmation status and message dispatch ID.
     """
-    # Simulate transactional dispatch (SendGrid / Resend API)
-    dispatch_id = f"msg_{abs(hash(to_email + subject)) % 1000000:06d}"
+    result = dispatch_outbound_email(to_email=to_email, subject=subject, body=body)
+
+    if result["status"] == "BLOCKED":
+        return f"DISPATCH_BLOCKED: {result['detail']}"
+    
     return (
-        f"SUCCESS: Email delivered to '{to_email}' with Message ID '{dispatch_id}'."
-        f"Subject: '{subject}' | Status: 200 OK."
+        f"SUCCESS: Email delivered to '{to_email}' via {result['provider']} "
+        f"with Message ID '{result['message_id']}'. Status: 200 OK."
     )
 
