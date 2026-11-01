@@ -12,17 +12,60 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
     const [actionLoading, setActionLoading] = useState(false);
     const [notice, setNotice] = useState(null);
 
+    // 3-Touch Cadence State
+    const [cadence, setCadence] = useState(null);
+    const [activeTouchStep, setActiveTouchStep] = useState(1);
+    const [cadenceLoading, setCadenceLoading] = useState(false);
+
     const textareaRef = useRef(null);
     const currentLead = reviewLeads[currentIndex] || null;
 
-    // Sync draft when switching cards
+    // Fetch stored cadence for the active lead
+    const fetchCadence = async (leadId) => {
+        try {
+            const res = await fetch(`${API_URL}/api/leads/${leadId}/cadence`);
+            if (res.ok) {
+                const data = await res.json();
+                setCadence(data.cadence || null);
+            } else {
+                setCadence(null);
+            }
+        } catch (e) {
+            setCadence(null);
+        }
+    };
+
+    // Sync draft and cadence when switching cards
     useEffect(() => {
         if (currentLead) {
             setEditableDraft(currentLead.email_draft || "");
             setCritique("");
             setNotice(null);
+            setActiveTouchStep(1);
+            fetchCadence(currentLead.id);
         }
     }, [currentIndex, currentLead?.id]);
+
+    // Generate 3-Touch Cadence on-demand
+    const handleGenerateCadence = async () => {
+        if (!currentLead) return;
+        setCadenceLoading(true);
+        setNotice(null);
+
+        try {
+            const res = await fetch(`${API_URL}/api/leads/${currentLead.id}/cadence/generate`, {
+                method: "POST",
+            });
+            if (!res.ok) throw new Error("Failed to generate cadence");
+            const data = await res.json();
+            setCadence(data.cadence);
+            setNotice("✓ Successfully generated 3-touch follow-up cadence!");
+        } catch (err) {
+            alert("Cadence generation error: " + err.message);
+        } finally {
+            setCadenceLoading(false);
+        }
+    };
 
     // Keyboard navigation & hotkeys
     useEffect(() => {
@@ -255,24 +298,108 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                                 {notice}
                             </div>
                         )}
-                        {/* Editable Draft Proposal */}
-                        <div className="form-group" style={{ marginBottom: "1rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <label style={{ color: "#ffffff", fontWeight: 700 }}>
-                                    Personalized Outreach Pitch (Press 'E' to edit)
-                                </label>
-                                <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-                                    {editableDraft.split(/\s+/).filter(Boolean).length} words
-                                </span>
+                        {/* 3-Touch Cadence Toolbar & Tabs */}
+                        <div style={{ background: "#0b1120", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 14px", marginBottom: "1rem" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: cadence ? "10px" : "0" }}>
+                                <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#93c5fd", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span>📅</span> Multi-Touch Outbound Cadence (3 Steps):
+                                </div>
+                                {!cadence && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        style={{ fontSize: "0.78rem", padding: "4px 10px", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2))" }}
+                                        onClick={handleGenerateCadence}
+                                        disabled={cadenceLoading}
+                                    >
+                                        {cadenceLoading ? "Generating Cadence..." : "✨ Generate 3-Touch Sequence"}
+                                    </button>
+                                )}
                             </div>
-                            <textarea
-                                ref={textareaRef}
-                                value={editableDraft}
-                                onChange={e => setEditableDraft(e.target.value)}
-                                rows={5}
-                                style={{ marginTop: "6px" }}
-                            />
+
+                            {cadence && (
+                                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                    <button
+                                        type="button"
+                                        className={`btn ${activeTouchStep === 1 ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
+                                        onClick={() => setActiveTouchStep(1)}
+                                    >
+                                        Touch 1 (Day 1: The Hook)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn ${activeTouchStep === 2 ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
+                                        onClick={() => setActiveTouchStep(2)}
+                                    >
+                                        Touch 2 (Day 3: Value Bump)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn ${activeTouchStep === 3 ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
+                                        onClick={() => setActiveTouchStep(3)}
+                                    >
+                                        Touch 3 (Day 7: Breakup)
+                                    </button>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Display Active Touch Content */}
+                        {activeTouchStep === 1 ? (
+                            /* Editable Draft Proposal (Touch 1) */
+                            <div className="form-group" style={{ marginBottom: "1rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <label style={{ color: "#ffffff", fontWeight: 700 }}>
+                                        Touch 1 Proposal: Initial Hook (Press 'E' to edit)
+                                    </label>
+                                    <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
+                                        {editableDraft.split(/\s+/).filter(Boolean).length} words
+                                    </span>
+                                </div>
+                                <textarea
+                                    ref={textareaRef}
+                                    value={editableDraft}
+                                    onChange={e => setEditableDraft(e.target.value)}
+                                    rows={5}
+                                    style={{ marginTop: "6px" }}
+                                />
+                            </div>
+                        ) : activeTouchStep === 2 && cadence?.touch_2 ? (
+                            /* Touch 2 Preview */
+                            <div style={{ background: "#080c16", border: "1px solid var(--border-accent)", borderRadius: "8px", padding: "14px", marginBottom: "1rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                    <span style={{ fontWeight: 700, color: "#a5b4fc", fontSize: "0.85rem" }}>
+                                        Touch 2 (Day 3 Follow-Up) • {cadence.touch_2.intent}
+                                    </span>
+                                    <span className="tag tag-info" style={{ fontSize: "0.68rem" }}>Automated Drip at Day +3</span>
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "6px" }}>
+                                    <strong>Subject:</strong> {cadence.touch_2.subject}
+                                </div>
+                                <div style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", lineHeight: 1.6, color: "var(--text-medium)" }}>
+                                    {cadence.touch_2.body}
+                                </div>
+                            </div>
+                        ) : activeTouchStep === 3 && cadence?.touch_3 ? (
+                            /* Touch 3 Preview */
+                            <div style={{ background: "#080c16", border: "1px solid var(--border-accent)", borderRadius: "8px", padding: "14px", marginBottom: "1rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                    <span style={{ fontWeight: 700, color: "#a5b4fc", fontSize: "0.85rem" }}>
+                                        Touch 3 (Day 7 Polite Breakup) • {cadence.touch_3.intent}
+                                    </span>
+                                    <span className="tag tag-info" style={{ fontSize: "0.68rem" }}>Automated Drip at Day +7</span>
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "6px" }}>
+                                    <strong>Subject:</strong> {cadence.touch_3.subject}
+                                </div>
+                                <div style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", lineHeight: 1.6, color: "var(--text-medium)" }}>
+                                    {cadence.touch_3.body}
+                                </div>
+                            </div>
+                        ) : null}
                         {/* AI Re-draft Critique Input */}
                         <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", padding: "12px", borderRadius: "8px", marginBottom: "1.2rem" }}>
                             <label style={{ color: "#a5b4fc", fontSize: "0.8rem" }}>

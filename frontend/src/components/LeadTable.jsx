@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
 
@@ -9,9 +9,27 @@ export default function LeadTable({
     onOpenBriefing,
 }) {
     const [selectedIds, setSelectedIds] = useState(new Set());
-    const [searchTerm, setSearchTerm] = useState("");
-    const [processing, setProcessing] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("")
+    const [processing, setProcessing] = useState(false)
     const [actionNotice, setActionNotice] = useState(null);
+    const [schedulerInfo, setSchedulerInfo] = useState(null)
+
+    // Fetch live scheduler status
+    const fetchSchedulerStatus = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/scheduler/status`);
+            if (res.ok) {
+                const data = await res.json();
+                setSchedulerInfo(data);
+            }
+        } catch (e) {
+            console.warn("Scheduler status fetch error: ", e)
+        }
+    }
+
+    useEffect(() => {
+        fetchSchedulerStatus();
+    }, []);
 
     // Filter leads based on search term
     const filteredLeads = leads.filter(l => {
@@ -86,14 +104,15 @@ export default function LeadTable({
         setActionNotice(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/leads/cron-trigger`, {
-                method: "POST",
+            const res = await fetch(`${API_URL}/api/scheduler/run-now`, {
+                method: "POST"
             });
             const data = await res.json();
-            setActionNotice(`⏰ Cron Triggered: ${data.message}`);
+            setActionNotice(`⏰ Scheduler: ${data.message}`);
             if (onRefresh) onRefresh();
+            fetchSchedulerStatus();
         } catch (err) {
-            alert("Cron error: " + err.message);
+            alert("Scheduler error: " + err.message);
         } finally {
             setProcessing(false);
         }
@@ -115,8 +134,20 @@ export default function LeadTable({
                     </div>
                 </div>
 
-                {/* Live Daily Quota Badge */}
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {/* Live Daily Quota & Scheduler Badges */}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    {schedulerInfo && (
+                        <div className="pill" style={{ borderColor: "rgba(56, 189, 248, 0.4)", color: "#38bdf8" }}>
+                            <span>⏰</span>
+                            <strong>{schedulerInfo.target_time} AM</strong> Auto-Drip
+                            {schedulerInfo.is_processing && (
+                                <span className="tag tag-warning pulse-anim" style={{ fontSize: "0.65rem", padding: "2px 6px", marginLeft: "4px" }}>
+                                    Running...
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     <div className="pill" style={{ borderColor: quota.remaining_today > 0 ? "var(--success-border)" : "var(--danger-border)" }}>
                         <span style={{ color: quota.remaining_today > 0 ? "var(--success)" : "var(--danger)" }}>●</span>
                         <strong>{quota.remaining_today} / {quota.daily_limit}</strong> Daily Quota Remaining
@@ -124,7 +155,10 @@ export default function LeadTable({
                     <button
                         className="btn btn-secondary"
                         style={{ fontSize: "0.8rem", padding: "6px 12px" }}
-                        onClick={onRefresh}
+                        onClick={() => {
+                            if (onRefresh) onRefresh();
+                            fetchSchedulerStatus();
+                        }}
                     >
                         ↻ Refresh
                     </button>

@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from queue_manager import log_dispatch_event
+from notifier import send_slack_dispatch_alert
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "outbound@company.com")
@@ -55,9 +56,14 @@ def dispatch_outbound_email(
     body: str,
     lead_id: Optional[str] = None,
     thread_id: Optional[str] = None,
+    company: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    role: Optional[str] = None,
+    icp_score: Optional[int] = None,
+    eval_score: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Dispatches outbound email through the best available provider with
-        deliverability guardrails and audit logging.
+        deliverability guardrails, audit logging and Slack/webhook alerts.
     """
     # 1. Deliverability Guardrail: Recipient syntax & domain check
     if not validate_recipient_domain(to_email):
@@ -72,6 +78,16 @@ def dispatch_outbound_email(
             error_message=error_msg,
             lead_id=lead_id,
             thread_id=thread_id,
+        )
+        send_slack_dispatch_alert(
+            company=company or "Target Account",
+            contact_name=contact_name or "Target Contact",
+            role=role or "Executive",
+            email=to_email,
+            subject=subject,
+            provider="GUARDRAIL_BLOCKED",
+            message_id="none",
+            pitch_preview=body,
         )
         return {
             "status": "BLOCKED",
@@ -156,6 +172,21 @@ def dispatch_outbound_email(
         error_message=error_message,
         lead_id=lead_id,
         thread_id=thread_id,
+    )
+
+    # 4. Trigger Real-Time Slack Alert
+    send_slack_dispatch_alert(
+        company=company or "Target Account",
+        contact_name=contact_name or "Target Contact",
+        role=role or "Executive",
+        email=to_email,
+        subject=subject,
+        status=status,
+        provider=provider,
+        message_id=message_id,
+        icp_score=icp_score,
+        eval_score=eval_score,
+        pitch_preview=body,
     )
 
     return {

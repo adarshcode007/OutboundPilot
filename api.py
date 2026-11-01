@@ -7,6 +7,7 @@ REST API Endpoints:
 4. GET  /api/campaigns               - List all historical campaigns from PostgreSQL
 """
 
+from notifier import send_slack_dispatch_alert
 from agents import cadence
 import os
 import uuid
@@ -525,3 +526,20 @@ def get_cadence_enpoint(lead_id: str):
         raise HTTPException(status_code=404, detail="No cadence generates for this lead yet.")
     return {"status": "SUCCESS", "cadence": cadence}
 
+# Notification & Webhook Endpoints
+@app.post("/api/notifications/test-slack")
+def test_slack_notifcation():
+    """Triggers a test Slack Block Kit notification to verify webhook formatting."""
+    return send_slack_dispatch_alert(
+        company="Stripe",
+        contact_name="David",
+        role="Head of AI Infrastructure",
+        email="david@stripe.com",
+        subject="AI Infrastructure Partnership with Stripe",
+        status="DELIVERED",
+        provider="SANDBOX",
+        message_id="msg_test_12345",
+        icp_score=9,
+        eval_score=9,
+        pitch_preview="Hi David, reaching out regarding Stripe's AI billing expansion...",
+    )
