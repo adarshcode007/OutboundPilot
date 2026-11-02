@@ -4,6 +4,7 @@ import { PRESETS } from '../data/presets';
 import CsvUploader from './CsvUploader';
 import LeadTable from './LeadTable';
 import MorningBriefing from './MorningBriefing';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
 
@@ -264,7 +265,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
         {/* Main Interactive Workspace Canvas */}
         <main className="workspace-main">
-          {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue */}
+          {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue vs Analytics */}
           <div style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "0.5rem" }}>
             <button
               className={`btn ${activeTab === 'single' ? 'btn-primary' : 'btn-secondary'}`}
@@ -279,6 +280,13 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               onClick={() => { setActiveTab("batch"); fetchLeads(); }}
             >
               📁 Batch CSV & Lead Queue ({queueLeads.length})
+            </button>
+            <button
+              className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              onClick={() => setActiveTab("analytics")}
+            >
+              📊 ROI & Intelligence
             </button>
           </div>
 
@@ -359,8 +367,12 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             </div>
           )}
 
+          {activeTab === "analytics" && (
+            <AnalyticsDashboard />
+          )}
+
           {/* Campaign Lifecycle Stepper */}
-          {threadId && (
+          {activeTab === "single" && threadId && (
             <div className="card">
               <div className="card-header">
                 <div className="card-title">
@@ -451,7 +463,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           )}
 
           {/* Human-in-the-Loop Review Area */}
-          {campaignState?.is_paused_at_gate && (
+          {activeTab === "single" && campaignState?.is_paused_at_gate && (
             <div className="card" style={{ borderColor: "var(--warning)", boxShadow: "0 0 30px rgba(245, 158, 11, 0.15)" }}>
               <div className="card-header">
                 <div>
@@ -521,7 +533,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           )}
 
           {/* Final Dispatch Confirmation */}
-          {campaignState?.approval_status === "APPROVED" && (
+          {activeTab === "single" && campaignState?.approval_status === "APPROVED" && (
             <div className="card" style={{ borderColor: "var(--success)" }}>
               <div className="card-header">
                 <div className="card-title" style={{ color: "#34d399" }}>
