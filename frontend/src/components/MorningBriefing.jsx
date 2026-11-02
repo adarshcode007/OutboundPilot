@@ -27,6 +27,9 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
             if (res.ok) {
                 const data = await res.json();
                 setCadence(data.cadence || null);
+                if (data.cadence?.touch_1?.body) {
+                    setEditableDraft(prev => (prev && prev.trim()) ? prev : data.cadence.touch_1.body);
+                }
             } else {
                 setCadence(null);
             }
@@ -38,7 +41,8 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
     // Sync draft and cadence when switching cards
     useEffect(() => {
         if (currentLead) {
-            setEditableDraft(currentLead.email_draft || "");
+            const initialDraft = currentLead.email_draft || currentLead.cadence?.touch_1?.body || "";
+            setEditableDraft(initialDraft);
             setCritique("");
             setNotice(null);
             setActiveTouchStep(1);
@@ -59,6 +63,9 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
             if (!res.ok) throw new Error("Failed to generate cadence");
             const data = await res.json();
             setCadence(data.cadence);
+            if (data.cadence?.touch_1?.body) {
+                setEditableDraft(data.cadence.touch_1.body);
+            }
             setNotice("✓ Successfully generated 3-touch follow-up cadence!");
         } catch (err) {
             alert("Cadence generation error: " + err.message);
@@ -358,15 +365,21 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                                         Touch 1 Proposal: Initial Hook (Press 'E' to edit)
                                     </label>
                                     <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-                                        {editableDraft.split(/\s+/).filter(Boolean).length} words
+                                        {(editableDraft || cadence?.touch_1?.body || currentLead?.email_draft || "").split(/\s+/).filter(Boolean).length} words
                                     </span>
                                 </div>
+                                {cadence?.touch_1?.subject && (
+                                    <div style={{ fontSize: "0.82rem", color: "#a5b4fc", margin: "6px 0", background: "rgba(99, 102, 241, 0.08)", padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                                        <strong>Subject:</strong> {cadence.touch_1.subject}
+                                    </div>
+                                )}
                                 <textarea
                                     ref={textareaRef}
-                                    value={editableDraft}
+                                    value={editableDraft || cadence?.touch_1?.body || currentLead?.email_draft || ""}
                                     onChange={e => setEditableDraft(e.target.value)}
                                     rows={5}
                                     style={{ marginTop: "6px" }}
+                                    placeholder="Enter your initial hook outreach proposal here..."
                                 />
                             </div>
                         ) : activeTouchStep === 2 && cadence?.touch_2 ? (

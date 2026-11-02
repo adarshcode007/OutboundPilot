@@ -125,16 +125,13 @@ def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = 
     return batch_id
 
 def list_queued_leads(status: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
-    """Retrieves leads sorted descending by priority score."""
+    """Retrieves leads sorted descending by priority score with full enrichments."""
     with pool.connection() as conn:
         with conn.cursor() as cur:
             if status:
                 cur.execute(
                     """
-                    SELECT id, batch_id, company, role, contact_name, contact_email,
-                           priority_score, priority_tier, priority_tags, status,
-                           thread_id, icp_fit_score, eval_score, created_at, processed_at
-                    FROM lead_queue
+                    SELECT * FROM lead_queue
                     WHERE status = %s
                     ORDER BY priority_score DESC, created_at ASC
                     LIMIT %s
@@ -144,34 +141,27 @@ def list_queued_leads(status: Optional[str] = None, limit: int = 100) -> List[Di
             else:
                 cur.execute(
                     """
-                    SELECT id, batch_id, company, role, contact_name, contact_email, priority_score, priority_tier,
-                        priority_tags, status, thread_id, icp_fit_score, eval_score, created_at, processed_at
-                    FROM lead_queue
+                    SELECT * FROM lead_queue
                     ORDER BY priority_score DESC, created_at ASC
                     LIMIT %s
                     """,
                     (limit,)
                 )
-            rows = cur.fetchall()
+            colnames = [desc[0] for desc in cur.description]
             leads = []
-            for r in rows:
-                leads.append({
-                    "id": str(r[0]),
-                    "batch_id": r[1],
-                    "company": r[2],
-                    "role": r[3],
-                    "contact_name": r[4],
-                    "contact_email": r[5],
-                    "priority_score": r[6],
-                    "priority_tier": r[7],
-                    "priority_tags": r[8] if isinstance(r[8], list) else json.loads(r[8] or "[]"),
-                    "status": r[9],
-                    "thread_id": r[10],
-                    "icp_fit_score": r[11],
-                    "eval_score": r[12],
-                    "created_at": r[13].isoformat() if r[13] else None,
-                    "processed_at": r[14].isoformat() if r[14] else None,
-                })
+            for row in cur.fetchall():
+                lead = dict(zip(colnames, row))
+                lead["id"] = str(lead["id"])
+                if isinstance(lead.get("priority_tags"), str):
+                    try:
+                        lead["priority_tags"] = json.loads(lead["priority_tags"])
+                    except Exception:
+                        lead["priority_tags"] = []
+                if lead.get("created_at") and hasattr(lead["created_at"], "isoformat"):
+                    lead["created_at"] = lead["created_at"].isoformat()
+                if lead.get("processed_at") and hasattr(lead["processed_at"], "isoformat"):
+                    lead["processed_at"] = lead["processed_at"].isoformat()
+                leads.append(lead)
             return leads
         
 def get_lead_by_id(lead_id: str) -> Optional[Dict[str, Any]]:
