@@ -43,6 +43,9 @@ from queue_manager import (
 
 from scheduler import scheduler
 from agents.cadence import generate_outbound_cadence
+from agents.classifier import classify_inbound_reply
+from queue_manager import record_inbound_reply
+from notifier import send_slack_reply_alert
 
 app = FastAPI(
     title="Autonomous Outbound SDR API",
@@ -543,3 +546,46 @@ def test_slack_notifcation():
         eval_score=9,
         pitch_preview="Hi David, reaching out regarding Stripe's AI billing expansion...",
     )
+
+class InboundReplyWebhookRequest(BaseModel):
+    lead_id: str
+    reply_text: str
+    sender_email: Optional[str] = None
+
+@app.post("/api/webhooks/inbound-reply")
+def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
+    """Inbound webhook called when a prospect replies to an outreach email."""
+    lead = get_lead_by_id(payload.lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found.")
+
+    # 1. AI Sentiment Analysis
+    analysis = classify_inbound_reply(
+        reply_text=payload.reply_text,
+        original_pitch=lead.get("email_draft") or "",
+    )
+
+    # 2. Database update: Halt cadence & mark REPLIED
+    update_result = record_inbound_reply(
+        lead_id=payload.lead_id,
+        reply_text=payload.reply_text,
+        analysis=analysis,
+    )
+
+    # 3. Trigger Urgent Slack Notification
+    slack_res = send_slack_reply_alert(
+        company=lead["company"],
+        contact_name=lead.get("contact_name") or "Contact",
+        email=lead.get("contact_email") or payload.sender_email or "unknown@company.com",
+        reply_text=payload.reply_text,
+        analysis=analysis,
+    )
+
+    return {
+        "status": "PROCESSED",
+        "sentiment": analysis["sentiment"],
+        "is_positive_intent": analysis["is_positive_intent"],
+        "recommended_action": analysis["recommended_action"],
+        "cadence_status": update_result["cadence_status"],
+        "notification": slack_res["status"]
+    }

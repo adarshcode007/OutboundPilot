@@ -110,3 +110,66 @@ def send_crm_lead_sync(lead_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "SUCCESS" if res.status_code in [200,201] else "FAILED", "http_status": res.status_code}
     except Exception as e:
         return {"status": "FAILED", "error": str(e)}
+    
+def send_slack_reply_alert(
+    company: str,
+    contact_name: str,
+    email: str,
+    reply_text: str,
+    analysis: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Dispatches an urgent alert to Slack when an inbound pospect reply is received."""
+    is_pos = analysis.get("is_positive_intent", False)
+    sentiment = analysis.get("sentiment", "UNKNOWN")
+    emoji = "🔥" if is_pos else "📬"
+    header = f"{emoji} [Prospect Replied: {sentiment}] - Action Required"
+
+    blocks= [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": header[:150],
+                "emoji": True,
+            },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Company:*\n{company}"},
+                {"type": "mrkdwn", "text": f"*Contact:*\n{contact_name}"},
+                {"type": "mrkdwn", "text": f"*Email:*\n{email}"},
+                {"type": "mrkdwn", "text": f"*Sentiment:*\n*{sentiment}*"},
+                {"type": "mrkdwn", "text": f"*Positive Intent:*\n{'✅ YES' if is_pos else '❌ NO'}"},
+                {"type": "mrkdwn", "text": f"*Cadence Status:*\n*HALTED & CANCELLED*"},
+            ],
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Summary:* {analysis.get('summary', '')}\n*Recommended Next Action:* ⚡{analysis.get('recommended_action', '')}",
+            },
+        },
+        {
+            "type": "context",
+            "elements": [
+                {"type": "mrkdwn", "text": f"*Inbound Reply:*\"{reply_text[:280]}\""}
+            ],
+        },
+    ]
+
+    payload = {"blocks": blocks}
+
+    if SLACK_WEBHOOK_URL:
+        try:
+            res = httpx.post(SLACK_WEBHOOK_URL, json=payload, timeout=5.0)
+            return {"status": "SENT" if res.status_code == 200 else "FAILED", "provider": "SLACK_LIVE"}
+        except Exception as e:
+            return {"status": "FAILED", "error": str(e), "provider": "SLACK_LIVE"}
+    return {
+        "status": "MOCK_SENT",
+        "provider": "SLACK_MOCK",
+        "payload": payload,
+        "detail": "Mock inbound reply Slack notification generated successfully.",
+    }

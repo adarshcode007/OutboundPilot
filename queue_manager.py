@@ -53,6 +53,7 @@ def init_queue_schema():
                 );
 
                 ALTER TABLE lead_queue ADD COLUMN IF NOT EXISTS cadence JSONB;
+                ALTER TABLE lead_queue ADD COLUMN IF NOT EXISTS reply_data JSONB;
                 CREATE TABLE IF NOT EXISTS dispatch_ledger (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     lead_id UUID,
@@ -306,3 +307,54 @@ def list_dispatch_ledger(limit: int = 50) -> List[Dict[str, Any]]:
                 "error_message": r[9],
                 "dispatched_at": r[10].isoformat() if r[10] else None
             } for r in rows]
+
+
+def record_inbound_reply(
+    lead_id: str,
+    reply_text: str,
+    analysis: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Halts pending automated follow-ups (Touch 2 & Touch 3), transitions
+    lead status to 'REPLIED', and records reply context in PostgreSQL.
+    """
+    from datetime import datetime, timezone
+
+    lead = get_lead_by_id(lead_id)
+    if not lead:
+        return {"status": "ERROR", "detail": "Lead not found"}
+
+    # Fetch and cancel pending cadence touches
+    cadence = get_lead_cadence(lead_id) or {}
+    if "touch_2" in cadence and isinstance(cadence["touch_2"], dict):
+        cadence["touch_2"]["status"] = "CANCELLED"
+    if "touch_3" in cadence and isinstance(cadence["touch_3"], dict):
+        cadence["touch_3"]["status"] = "CANCELLED"
+    
+    reply_payload = {
+        "received_at": datetime.now(timezone.utc).isoformat(),
+        "reply_text": reply_text,
+        "sentiment": analysis.get("sentiment"),
+        "is_positive_intent": analysis.get("is_positive_intent"),
+        "summary": analysis.get("summary"),
+        "recommended_action": analysis.get("recommended_action"),
+        "referral_contact": analysis.get("referral_contact"),
+    }
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE lead_queue
+                SET status = 'REPLIED',
+                    cadence = %s,
+                    reply_data = %s
+                WHERE id = %s
+                """,
+                (json.dumps(cadence), json.dumps(reply_payload), lead_id)
+            )
+    return {
+        "status": "REPLIED",
+        "cadence_status": "HALTED_AND_CANCELLED",
+        "reply_data": reply_payload,
+    }
