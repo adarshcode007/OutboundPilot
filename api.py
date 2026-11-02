@@ -8,6 +8,7 @@ REST API Endpoints:
 """
 
 from notifier import send_slack_dispatch_alert
+from dispatcher import dispatch_outbound_email
 import os
 import uuid
 from typing import Optional, Literal
@@ -125,6 +126,9 @@ class HumanActionRequest(BaseModel):
     critique: Optional[str] = Field(
         default=None, description="Natural language feedback for AI Copywriter if action is REDRAFT"
     )
+    lead_id: Optional[str] = Field(
+        default=None, description="Optional UUID of the lead in lead_queue"
+    )
 
 class LeadBatchUploadRequest(BaseModel):
     leads: list[dict] = Field(..., description="List of raw lead dictionaries from CSV")
@@ -235,32 +239,73 @@ def get_campaign_state(thread_id: str):
 def submit_human_action(thread_id: str, payload: HumanActionRequest):
     """Endpoint 3: Submit human review feedback (Approve, Re-draft, Reject).
     
-    - APPROVE: Optionally applies manual edits, resumes graph into Dispatcher, and sends email.
+    - APPROVE: Applies manual edits, resumes graph/dispatches email, and marks lead as APPROVED in lead_queue.
     - REDRAFT: Takes user critique, prompts AI Copywriter to re-write, and updates PostgreSQL.
-    - REJECT: Marks campaign rejected in state and does NOT dispatch email.
+    - REJECT: Marks campaign and lead as REJECTED in PostgreSQL.
     """
     thread_config = {"configurable": {"thread_id": thread_id}}
     snapshot = sdr_graph.get_state(thread_config)
 
-    if not snapshot or not snapshot.values:
-        raise HTTPException(status_code=404, detail=f"Campaign '{thread_id}' not found")
+    # Resolve lead from database if lead_id provided or by thread_id
+    lead = None
+    if payload.lead_id:
+        lead = get_lead_by_id(payload.lead_id)
+    if not lead and thread_id and pool:
+        try:
+            with pool.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM lead_queue WHERE thread_id = %s LIMIT 1", (thread_id,))
+                    row = cur.fetchone()
+                    if row:
+                        lead = get_lead_by_id(str(row[0]))
+        except Exception:
+            pass
 
-    company = snapshot.values.get("target_company", "")
-    current_draft = snapshot.values.get("email_draft", "")
-    research = snapshot.values.get("research_summary", "")
+    has_graph_state = bool(snapshot and snapshot.values)
+    if not has_graph_state and not lead:
+        raise HTTPException(status_code=404, detail=f"Campaign '{thread_id}' or lead not found")
+
+    company = snapshot.values.get("target_company", "") if has_graph_state else (lead.get("company", "") if lead else "")
+    current_draft = snapshot.values.get("email_draft", "") if has_graph_state else (lead.get("email_draft", "") if lead else "")
+    research = snapshot.values.get("research_summary", "") if has_graph_state else (lead.get("research_summary", "") if lead else "")
 
     # 1. ACTION: APPROVE & DISPATCH
     if payload.action == "APPROVE":
-        if payload.edited_draft and payload.edited_draft.strip():
-            sdr_graph.update_state(thread_config, {"email_draft": payload.edited_draft.strip()})
+        final_draft = payload.edited_draft.strip() if (payload.edited_draft and payload.edited_draft.strip()) else current_draft
 
-        # Resume graph execution (invoking None triggers the pending dispatcher node)
-        final_state = sdr_graph.invoke(None, config=thread_config)
-        receipt = final_state["messages"][-1].content if final_state["messages"] else "Dispatched."
+        if has_graph_state:
+            if payload.edited_draft and payload.edited_draft.strip():
+                sdr_graph.update_state(thread_config, {"email_draft": final_draft})
+            final_state = sdr_graph.invoke(None, config=thread_config)
+            receipt = final_state["messages"][-1].content if final_state["messages"] else "Dispatched."
+        else:
+            # Direct dispatch via production outbound dispatcher
+            to_email = lead.get("contact_email") if (lead and lead.get("contact_email")) else "target@company.com"
+            receipt_info = dispatch_outbound_email(
+                to_email=to_email,
+                subject=f"Connecting with {company}",
+                body=final_draft,
+                lead_id=str(lead["id"]) if lead else None,
+                thread_id=thread_id,
+                company=company,
+                contact_name=lead.get("contact_name") if lead else None,
+                role=lead.get("role") if lead else None,
+                icp_score=lead.get("icp_fit_score") if lead else None,
+                eval_score=lead.get("eval_score") if lead else None,
+            )
+            receipt = receipt_info.get("detail", "Dispatched.")
+
+        # Always persist lead_queue status as APPROVED so it leaves the review deck
+        if lead:
+            update_lead_status(
+                lead_id=str(lead["id"]),
+                status="APPROVED",
+                email_draft=final_draft,
+            )
 
         return {
             "status": "DISPATCHED",
-            "message": "Campaign approved and outbound email dispatched.",
+            "message": f"Campaign for {company} approved and outbound email dispatched.",
             "receipt": receipt,
         }
 
@@ -289,16 +334,28 @@ Rewrite the 3-paragraph executive cold outreach email incorporating the manager'
         # Run automated judge on the revised draft
         eval_result = evaluate_email_draft(research, new_draft)
 
-        # Update state in PostgreSQL checkpointer
-        sdr_graph.update_state(
-            thread_config,
-            {
-                "email_draft": new_draft,
-                "eval_score": eval_result.overall_score,
-                "eval_verdict": eval_result.verdict,
-                "eval_critique": eval_result.critique,
-            },
-        )
+        # Update state in PostgreSQL checkpointer if graph exists
+        if has_graph_state:
+            sdr_graph.update_state(
+                thread_config,
+                {
+                    "email_draft": new_draft,
+                    "eval_score": eval_result.overall_score,
+                    "eval_verdict": eval_result.verdict,
+                    "eval_critique": eval_result.critique,
+                },
+            )
+
+        # Always persist revised draft into lead_queue
+        if lead:
+            update_lead_status(
+                lead_id=str(lead["id"]),
+                status="DRAFTED",
+                email_draft=new_draft,
+                eval_score=eval_result.overall_score,
+                eval_verdict=eval_result.verdict,
+                eval_critique=eval_result.critique,
+            )
 
         return {
             "status": "REVISED",
@@ -311,13 +368,19 @@ Rewrite the 3-paragraph executive cold outreach email incorporating the manager'
 
     # 3. ACTION: REJECT LEAD
     elif payload.action == "REJECT":
-        sdr_graph.update_state(
-            thread_config,
-            {"approval_status": "REJECTED", "next_step": "FINISH"},
-        )
+        if has_graph_state:
+            sdr_graph.update_state(
+                thread_config,
+                {"approval_status": "REJECTED", "next_step": "FINISH"},
+            )
+        if lead:
+            update_lead_status(
+                lead_id=str(lead["id"]),
+                status="REJECTED",
+            )
         return {
             "status": "REJECTED",
-            "message": "Campaign marked as REJECTED. Email was not sent.",
+            "message": f"Lead {company} marked as REJECTED. Email was not sent.",
         }
 
 

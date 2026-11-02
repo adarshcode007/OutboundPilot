@@ -112,6 +112,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 action: actionType,
                 edited_draft: editableDraft,
                 critique: critique,
+                lead_id: currentLead.id,
             };
 
             const res = await fetch(`${API_URL}/api/campaign/${threadId}/action`, {
@@ -130,14 +131,15 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 setNotice(data.message || "Action processed successfully.");
                 if (onRefresh) onRefresh();
 
-                // Advance to next card after 400ms
+                // Advance to next card: since approved/rejected lead leaves reviewLeads,
+                // the next pending card naturally shifts into current index.
                 setTimeout(() => {
-                    if (currentIndex < reviewLeads.length - 1) {
-                        setCurrentIndex(prev => prev + 1);
-                    } else if (currentIndex > 0) {
-                        setCurrentIndex(prev => prev - 1);
-                    }
-                }, 400);
+                    setCurrentIndex(prev => {
+                        const remaining = reviewLeads.length - 1;
+                        if (remaining <= 0) return 0;
+                        return prev >= remaining ? remaining - 1 : prev;
+                    });
+                }, 350);
             }
         } catch (err) {
             alert("Action failed: " + err.message);
