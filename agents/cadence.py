@@ -4,7 +4,6 @@ Generates an automated 3-touch follow-up cadence (Day 1, Day 3, Day 7)
 grounded in verified company research and initial pitch context.
 """
 
-from langchain_core.messages import content
 from typing import Dict, Any
 from pydantic import BaseModel, Field
 from langchain_core.messages import SystemMessage, HumanMessage

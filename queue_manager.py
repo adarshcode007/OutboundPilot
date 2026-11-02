@@ -358,3 +358,107 @@ def record_inbound_reply(
         "cadence_status": "HALTED_AND_CANCELLED",
         "reply_data": reply_payload,
     }
+
+def get_analytics_summary() -> Dict[str, Any]:
+    """
+    Computes real-time pipeline analytics, Token-Saver ROI economics,
+    deliverability rates, and inbound engagement metrics from PostgreSQL.
+    """
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            # 1. Lead Queue Status Counts
+            cur.execute("""
+                SELECT status, COUNT(*)
+                FROM lead_queue
+                GROUP BY status
+            """)
+            status_map = dict(cur.fetchall())
+
+            total_leads = sum(status_map.values())
+            disqualified = status_map.get("DISQUALIFIED", 0)
+            queued = status_map.get("QUEUED", 0)
+            drafted = status_map.get("DRAFTED", 0)
+            approved = status_map.get("APPROVED", 0)
+            dispatched_leads = status_map.get("DISPATCHED", 0)
+            replied = status_map.get("REPLIED", 0)
+
+            # Account that passed ICP qualification
+            qualified = drafted + approved + dispatched_leads + replied
+            evaluated_total = qualified + disqualified
+            qualification_rate = round((qualified / evaluated_total * 100), 1) if evaluated_total > 0 else 0.0
+
+            # 2. Token-Saver ROI Economics
+            # Skipping Copywriter (~2,000 tokens), Evaluator (~2,000 tokens) and Cadence (~2,500 tokens)
+            # saves ~6,500 Groq tokens per disqualified lead
+            TOKENS_SAVED_PER_DISQUALIFIED = 6500
+            tokens_saved = disqualified * TOKENS_SAVED_PER_DISQUALIFIED
+            # 100k tokens ~= 1 full day of Groq free tier limit
+            free_tier_days_preserved = round(tokens_saved / 100000, 2)
+
+            # 3. Average AI Quality & ICP Scores
+            cur.execute("""
+                SELECT 
+                    ROUND(AVG(icp_fit_score)::numeric, 1),
+                    ROUND(AVG(eval_score)::numeric, 1)
+                FROM lead_queue
+                WHERE icp_fit_score IS NOT NULL AND icp_fit_score > 0
+            """)
+            avg_icp, avg_eval = cur.fetchone()
+
+            # 4. Deliverability Ledger Breakdown
+            cur.execute("""
+                SELECT status, COUNT(*)
+                FROM dispatch_ledger
+                GROUP BY status
+            """)
+            dispatch_map = dict(cur.fetchall())
+            total_dispatched_emails = sum(dispatch_map.values())
+            delivered_count = dispatch_map.get("DELIVERED", 0)
+            blocked_count = dispatch_map.get("BLOCKED", 0)
+            deliverability_rate = round((delivered_count / total_dispatched_emails * 100), 1) if total_dispatched_emails > 0 else 100.0
+
+            # 5. Inbound Reply Sentiment Breakdown
+            cur.execute("""
+                SELECT reply_data->>'sentiment', COUNT(*)
+                FROM lead_queue
+                WHERE reply_data IS NOT NULL
+                GROUP BY reply_data->>'sentiment'
+            """)
+            sentiment_map = dict(cur.fetchall())
+            interested_count = sentiment_map.get("INTERESTED", 0)
+            referral_count = sentiment_map.get("REFERRAL", 0)
+            positive_replies = interested_count + referral_count
+
+            return {
+                "pipeline": {
+                    "total_leads": total_leads,
+                    "queued": queued,
+                    "qualified": qualified,
+                    "disqualified": disqualified,
+                    "qualification_rate_pct": qualification_rate,
+                    "drafted_awaiting_review": drafted,
+                    "approved_or_dispatched": approved + dispatched_leads,
+                    "replied": replied,
+                },
+                "token_saver_roi": {
+                    "disqualified_accounts": disqualified,
+                    "tokens_saved": tokens_saved,
+                    "free_tier_days_preserved": free_tier_days_preserved,
+                    "tokens_saved_formatted": f"{tokens_saved:,} tokens",
+                },
+                "quality_scores": {
+                    "avg_icp_score": float(avg_icp) if avg_icp is not None else 0.0,
+                    "avg_eval_score": float(avg_eval) if avg_eval is not None else 0.0,
+                },
+                "deliverability": {
+                    "total_dispatches": total_dispatched_emails,
+                    "delivered": delivered_count,
+                    "guardrail_blocked": blocked_count,
+                    "deliverability_rate_pct": deliverability_rate,
+                },
+                "engagement": {
+                    "total_replies": replied,
+                    "positive_replies": positive_replies,
+                    "sentiment_breakdown": sentiment_map,
+                },
+            }

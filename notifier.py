@@ -29,7 +29,7 @@ def send_slack_dispatch_alert(
 ) -> Dict[str, Any]:
     """
     Sends a rich Slack Block Kit notification for an outbound dispatch event.
-    Falls back gracefully to mock logginh if SLACK_WEBHOOK_URL is not set.
+    Falls back gracefully to mock logging if SLACK_WEBHOOK_URL is not set.
     """
     is_delivered = status == "DELIVERED"
     status_emoji = "🚀" if is_delivered else "🛑"
@@ -118,13 +118,13 @@ def send_slack_reply_alert(
     reply_text: str,
     analysis: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Dispatches an urgent alert to Slack when an inbound pospect reply is received."""
+    """Dispatches an urgent alert to Slack when an inbound prospect reply is received."""
     is_pos = analysis.get("is_positive_intent", False)
     sentiment = analysis.get("sentiment", "UNKNOWN")
     emoji = "🔥" if is_pos else "📬"
     header = f"{emoji} [Prospect Replied: {sentiment}] - Action Required"
 
-    blocks= [
+    blocks = [
         {
             "type": "header",
             "text": {
@@ -154,7 +154,7 @@ def send_slack_reply_alert(
         {
             "type": "context",
             "elements": [
-                {"type": "mrkdwn", "text": f"*Inbound Reply:*\"{reply_text[:280]}\""}
+                {"type": "mrkdwn", "text": f"*Inbound Reply:* \"{reply_text[:280]}\""}
             ],
         },
     ]

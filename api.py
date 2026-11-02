@@ -8,7 +8,6 @@ REST API Endpoints:
 """
 
 from notifier import send_slack_dispatch_alert
-from agents import cadence
 import os
 import uuid
 from typing import Optional, Literal
@@ -38,13 +37,14 @@ from queue_manager import (
     get_lead_by_id,
     update_lead_status,
     save_lead_cadence,
-    get_lead_cadence
+    get_lead_cadence,
+    record_inbound_reply,
+    get_analytics_summary,
 )
 
 from scheduler import scheduler
 from agents.cadence import generate_outbound_cadence
 from agents.classifier import classify_inbound_reply
-from queue_manager import record_inbound_reply
 from notifier import send_slack_reply_alert
 
 app = FastAPI(
@@ -589,3 +589,9 @@ def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
         "cadence_status": update_result["cadence_status"],
         "notification": slack_res["status"]
     }
+
+# Analytics & Token-Saver ROI Endpoint
+@app.get("/api/analytics")
+def get_analytics_endpoint():
+    """Returns comprehensive pipeline analytics and Token-Saver ROI metrics."""
+    return get_analytics_summary()

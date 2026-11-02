@@ -11,7 +11,6 @@ Deliverability Guardrails:
 - PostgreSQL dispatch audit ledger
 """
 
-from time import time
 import os
 import re
 import socket
@@ -85,6 +84,7 @@ def dispatch_outbound_email(
             role=role or "Executive",
             email=to_email,
             subject=subject,
+            status="BLOCKED",
             provider="GUARDRAIL_BLOCKED",
             message_id="none",
             pitch_preview=body,
@@ -102,7 +102,7 @@ def dispatch_outbound_email(
     status = "DELIVERED"
     error_message = None
 
-    # Case 2: Resend API configured
+    # Case A: Resend API configured
     if RESEND_API_KEY:
         try:
             provider = "RESEND"
