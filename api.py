@@ -33,6 +33,8 @@ from prioritizer import prioritize_leads_batch
 from queue_manager import (
     init_queue_schema,
     insert_leads_batch,
+    insert_single_lead,
+    get_lead_by_thread_id,
     get_daily_quota_stats,
     list_queued_leads,
     get_lead_by_id,
@@ -129,6 +131,9 @@ class HumanActionRequest(BaseModel):
     lead_id: Optional[str] = Field(
         default=None, description="Optional UUID of the lead in lead_queue"
     )
+    recipient_email: Optional[str] = Field(
+        default=None, description="Optional recipient email address"
+    )
 
 class LeadBatchUploadRequest(BaseModel):
     leads: list[dict] = Field(..., description="List of raw lead dictionaries from CSV")
@@ -157,11 +162,35 @@ def root():
 def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTasks):
     """Endpoint 1: Trigger autonomous intelligence gathering.
     
-    Runs Researcher -> Analyst -> Copywriter -> Evaluator.
-    Automatically pauses at the HITL gate before email dispatch.
+    Unified workflow for Single Lead Ingestion:
+    1. Enforces daily quota limit.
+    2. Computes regex priority scores & tags (0 Groq tokens).
+    3. Inserts into PostgreSQL lead_queue table (decrements daily quota & creates lead_id).
+    4. Runs Researcher -> Analyst -> Copywriter -> Evaluator.
+    5. Saves state back into lead_queue (enables 3-touch cadence generation).
     """
+    quota_stats = get_daily_quota_stats()
+    if quota_stats["remaining_today"] <= 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily quota of {quota_stats['daily_limit']} leads reached for today. Reset at midnight."
+        )
+
     thread_id = f"camp_{uuid.uuid4().hex[:8]}"
     thread_config = {"configurable": {"thread_id": thread_id}}
+
+    # 1. Prioritize & score using regex heuristics (0 Groq tokens)
+    lead_dict = {
+        "company": payload.company,
+        "role": payload.role,
+        "contact_name": payload.contact_name,
+        "contact_email": payload.contact_email,
+    }
+    scored_leads = prioritize_leads_batch([lead_dict])
+    scored_lead = scored_leads[0] if scored_leads else lead_dict
+
+    # 2. Insert into lead_queue table (counts toward daily quota and allows cadence)
+    lead_id = insert_single_lead(scored_lead, thread_id=thread_id, status="PROCESSING")
 
     initial_state = {
         "messages": [HumanMessage(content=f"Launch outbound campaign for {payload.contact_name} at {payload.company}")],
@@ -179,12 +208,36 @@ def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTa
 
     # Execute graph up to the interrupt_before=["dispatcher"] gate
     def run_graph():
-        sdr_graph.invoke(initial_state, config=thread_config)
+        try:
+            sdr_graph.invoke(initial_state, config=thread_config)
+            snapshot = sdr_graph.get_state(thread_config)
+            values = snapshot.values
+
+            is_disqualified = values.get("icp_fit_score", 0) < 5
+            final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
+
+            update_lead_status(
+                lead_id=lead_id,
+                status=final_status,
+                thread_id=thread_id,
+                research_summary=values.get("research_summary"),
+                icp_fit_score=values.get("icp_fit_score"),
+                icp_rationale=values.get("icp_rationale"),
+                email_draft=values.get("email_draft"),
+                eval_score=values.get("eval_score"),
+                eval_verdict=values.get("eval_verdict"),
+                eval_critique=values.get("eval_critique"),
+                contact_email=payload.contact_email,
+            )
+        except Exception as e:
+            print(f">> [Single Lead Error] Lead {lead_id} failed: {e}")
+            update_lead_status(lead_id=lead_id, status="FAILED")
 
     background_tasks.add_task(run_graph)
 
     return {
         "thread_id": thread_id,
+        "lead_id": lead_id,
         "status": "PROCESSING",
         "message": f"Autonomous campaign started for {payload.company}. Check status at /api/campaign/{thread_id}",
     }
@@ -194,12 +247,32 @@ def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTa
 def get_campaign_state(thread_id: str):
     """Endpoint 2: Fetch campaign state snapshot for the Frontend UI.
     
-    Returns the research brief, ICP score, AI quality seal, and email draft.
+    Returns the research brief, ICP score, AI quality seal, email draft, and cadence.
     """
     thread_config = {"configurable": {"thread_id": thread_id}}
     snapshot = sdr_graph.get_state(thread_config)
+    lead = get_lead_by_thread_id(thread_id)
 
     if not snapshot or not snapshot.values:
+        if lead:
+            return {
+                "thread_id": thread_id,
+                "lead_id": lead["id"],
+                "ui_status": lead["status"],
+                "is_paused_at_gate": lead["status"] == "DRAFTED",
+                "target_company": lead.get("company"),
+                "target_contact_name": lead.get("contact_name"),
+                "target_contact_email": lead.get("contact_email"),
+                "research_summary": lead.get("research_summary"),
+                "icp_fit_score": lead.get("icp_fit_score", 0),
+                "icp_rationale": lead.get("icp_rationale"),
+                "email_draft": lead.get("email_draft"),
+                "eval_score": lead.get("eval_score"),
+                "eval_verdict": lead.get("eval_verdict"),
+                "eval_critique": lead.get("eval_critique"),
+                "approval_status": lead.get("status"),
+                "cadence": lead.get("cadence"),
+            }
         raise HTTPException(status_code=404, detail=f"No campaign found for thread_id '{thread_id}'")
 
     is_paused_at_gate = snapshot.next == ("dispatcher",)
@@ -219,6 +292,7 @@ def get_campaign_state(thread_id: str):
 
     return {
         "thread_id": thread_id,
+        "lead_id": lead["id"] if lead else None,
         "ui_status": ui_status,
         "is_paused_at_gate": is_paused_at_gate,
         "target_company": snapshot.values.get("target_company"),
@@ -232,6 +306,7 @@ def get_campaign_state(thread_id: str):
         "eval_verdict": snapshot.values.get("eval_verdict"),
         "eval_critique": snapshot.values.get("eval_critique"),
         "approval_status": snapshot.values.get("approval_status"),
+        "cadence": lead.get("cadence") if lead else None,
     }
 
 
@@ -273,14 +348,28 @@ def submit_human_action(thread_id: str, payload: HumanActionRequest):
     if payload.action == "APPROVE":
         final_draft = payload.edited_draft.strip() if (payload.edited_draft and payload.edited_draft.strip()) else current_draft
 
+        # Resolve recipient email (payload override -> lead_queue -> graph state)
+        to_email = (
+            (payload.recipient_email or "").strip()
+            or (lead.get("contact_email") if lead else "")
+            or (snapshot.values.get("target_contact_email") if has_graph_state else "")
+            or ""
+        ).strip()
+
+        # Guard: Reject missing or placeholder addresses
+        if not to_email or to_email in ["target@company.com", "test@example.com"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot dispatch: Lead has no valid recipient email. Please enter a valid recipient email address in the briefing deck."
+            )
+
         if has_graph_state:
-            if payload.edited_draft and payload.edited_draft.strip():
-                sdr_graph.update_state(thread_config, {"email_draft": final_draft})
+            state_updates = {"email_draft": final_draft, "target_contact_email": to_email}
+            sdr_graph.update_state(thread_config, state_updates)
             final_state = sdr_graph.invoke(None, config=thread_config)
             receipt = final_state["messages"][-1].content if final_state["messages"] else "Dispatched."
         else:
             # Direct dispatch via production outbound dispatcher
-            to_email = lead.get("contact_email") if (lead and lead.get("contact_email")) else "target@company.com"
             receipt_info = dispatch_outbound_email(
                 to_email=to_email,
                 subject=f"Connecting with {company}",
@@ -294,18 +383,21 @@ def submit_human_action(thread_id: str, payload: HumanActionRequest):
                 eval_score=lead.get("eval_score") if lead else None,
             )
             receipt = receipt_info.get("detail", "Dispatched.")
+            if receipt_info.get("status") in ["FAILED", "BOUNCED", "BLOCKED"]:
+                raise HTTPException(status_code=400, detail=f"Dispatch failed: {receipt}")
 
-        # Always persist lead_queue status as APPROVED so it leaves the review deck
+        # Always persist lead_queue status as APPROVED and save confirmed recipient email
         if lead:
             update_lead_status(
                 lead_id=str(lead["id"]),
                 status="APPROVED",
                 email_draft=final_draft,
+                contact_email=to_email,
             )
 
         return {
             "status": "DISPATCHED",
-            "message": f"Campaign for {company} approved and outbound email dispatched.",
+            "message": f"Campaign for {company} approved and outbound email dispatched to {to_email}.",
             "receipt": receipt,
         }
 

@@ -37,6 +37,11 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
+  // 3-Touch Cadence State
+  const [cadence, setCadence] = useState(null);
+  const [activeTouchStep, setActiveTouchStep] = useState(1);
+  const [cadenceLoading, setCadenceLoading] = useState(false);
+
   // Batch Queue & Briefing State
   const [activeTab, setActiveTab] = useState("single");
   const [queueLeads, setQueueLeads] = useState([]);
@@ -87,6 +92,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         if (res.ok) {
           const data = await res.json();
           setCampaignState(data);
+          if (data.cadence) {
+            setCadence(data.cadence);
+          }
           if (data.email_draft && !editableDraft) {
             setEditableDraft(data.email_draft);
           }
@@ -99,6 +107,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           ) {
             clearInterval(interval);
             setLoading(false);
+            fetchLeads();
           }
         }
       } catch (e) {
@@ -115,6 +124,8 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     setLoading(true);
     setCampaignState(null);
     setEditableDraft("");
+    setCadence(null);
+    setActiveTouchStep(1);
     setStatusNotice(null);
 
     try {
@@ -124,13 +135,44 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         body: JSON.stringify({ company, role, contact_name: name, contact_email: email })
       });
 
-      if (!res.ok) throw new Error("Failed to start campaign");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to start campaign");
+      }
       const data = await res.json();
       setThreadId(data.thread_id);
+      fetchLeads();
       fetchHistory();
     } catch (err) {
-      alert("Could not connect to FastAPI backend at " + API_URL + ". Ensure uvicorn is running.");
+      alert("Campaign launch error: " + err.message);
       setLoading(false);
+    }
+  };
+
+  // Generate 3-Touch Cadence for Single Lead
+  const handleGenerateCadence = async () => {
+    if (!campaignState?.lead_id) return;
+    setCadenceLoading(true);
+    setStatusNotice(null);
+    try {
+      const res = await fetch(`${API_URL}/api/leads/${campaignState.lead_id}/cadence/generate`, {
+        method: "POST"
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to generate cadence");
+      }
+      const data = await res.json();
+      setCadence(data.cadence);
+      if (data.cadence?.touch_1?.body) {
+        setEditableDraft(data.cadence.touch_1.body);
+      }
+      setStatusNotice("✓ Successfully generated 3-touch follow-up cadence!");
+      fetchLeads();
+    } catch (err) {
+      alert("Failed to generate cadence: " + err.message);
+    } finally {
+      setCadenceLoading(false);
     }
   };
 
@@ -143,7 +185,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       const payload = {
         action: actionType,
         edited_draft: editableDraft,
-        critique: critique
+        critique: critique,
+        lead_id: campaignState?.lead_id,
+        recipient_email: campaignState?.target_contact_email,
       };
 
       const res = await fetch(`${API_URL}/api/campaign/${threadId}/action`, {
@@ -153,6 +197,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || "Failed to process action");
+      }
       if (actionType === "REDRAFT") {
         setEditableDraft(data.revised_draft);
         setCritique("");
@@ -168,6 +215,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       alert("Action failed: " + err.message);
     } finally {
       setActionLoading(false);
+      fetchLeads();
       fetchHistory();
     }
   };
@@ -482,6 +530,58 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                   {statusNotice}
                 </div>
               )}
+
+              {/* 3-Touch Cadence Generator for Single Lead */}
+              <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "12px 14px", marginBottom: "1.2rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: cadence ? "10px" : "0px" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#a5b4fc", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>📅</span> Multi-Touch Outbound Cadence (3 Steps):
+                  </div>
+                  {!cadence && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: "0.78rem", padding: "4px 12px" }}
+                      onClick={handleGenerateCadence}
+                      disabled={cadenceLoading || !campaignState?.lead_id}
+                    >
+                      {cadenceLoading ? "Generating Cadence..." : "✨ Generate 3-Touch Cadence"}
+                    </button>
+                  )}
+                </div>
+
+                {cadence && (
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {[
+                      { step: 1, label: "Touch 1 (Day 1: The Hook)", data: cadence.touch_1 },
+                      { step: 2, label: "Touch 2 (Day 3: Value Bump)", data: cadence.touch_2 },
+                      { step: 3, label: "Touch 3 (Day 7: Breakup)", data: cadence.touch_3 },
+                    ].map(t => (
+                      <button
+                        key={t.step}
+                        type="button"
+                        onClick={() => {
+                          setActiveTouchStep(t.step);
+                          if (t.data?.body) setEditableDraft(t.data.body);
+                        }}
+                        style={{
+                          background: activeTouchStep === t.step ? "var(--primary)" : "#131b2e",
+                          color: activeTouchStep === t.step ? "#ffffff" : "var(--text-muted)",
+                          border: activeTouchStep === t.step ? "1px solid var(--primary-light)" : "1px solid var(--border-subtle)",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          fontSize: "0.78rem",
+                          cursor: "pointer",
+                          fontWeight: activeTouchStep === t.step ? 700 : 500,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="form-group" style={{ marginBottom: "1.2rem" }}>
                 <label>Executive Outreach Proposal (Editable Before Sending)</label>

@@ -15,6 +15,7 @@ import os
 import re
 import socket
 import uuid
+import subprocess
 from typing import Dict, Any, Optional
 import httpx
 from dotenv import load_dotenv
@@ -28,27 +29,47 @@ FROM_EMAIL = os.getenv("FROM_EMAIL", "outbound@company.com")
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
+# Strip spaces from Google App Password (e.g. "abcd efgh ijkl mnop" -> "abcdefghijklmnop")
+SMTP_PASS = os.getenv("SMTP_PASS", "").replace(" ","").strip()
 
 EMAIL_REGEX = re.compile(r"^[\w\.-]+@([\w\.-]+\.\w+)$")
 
-def validate_recipient_domain(email: str) -> bool:
-    """Verifies email syntax and checks domain resolution."""
-    match = EMAIL_REGEX.match(email.strip())
-    if not match:
-        return False
-    domain = match.group(1).lower()
-
-    # Knock local/mock domains allowed for offline testing
+def check_domain_mx(domain: str) -> bool:
+    """Verifies that the target domain has active Mail Exchange (MX) records."""
+    # Disallow mock test domains when real SMTP is active
     if domain in ["company.com", "target.com", "example.com", "test.com"]:
-        return True
+        if not (SMTP_HOST or RESEND_API_KEY):
+            return True
+        return False
     
     try:
-        socket.getaddrinfo(domain, None)
-        return True
-    except socket.gaierror:
+        res = subprocess.run(
+            ["nslookup", "-type=MX", domain],
+            capture_output=True,
+            text=True,
+            timeout=4.0
+        )
+        out = res.stdout.lower()
+        return "mail exchange" in out or "exchanger" in out
+    except Exception:
+        # Fallback to basic host resolution
+        try:
+            socket.getaddrinfo(domain, None)
+            return True 
+        except socket.gaierror:
+            return False
+        
+def validate_recipient_domain(email: str) -> bool:
+    """Verifies email syntax and confirms the domain has active mail servers."""
+    clean_email = email.strip()
+    if not clean_email or clean_email in ["target@company.com", "test@example.com"]:
         return False
-    
+    match = EMAIL_REGEX.match(clean_email)
+    if not match:
+        return False 
+    domain = match.group(1).lower()
+    return check_domain_mx(domain)
+  
 def dispatch_outbound_email(
     to_email: str,
     subject: str,
@@ -147,11 +168,23 @@ def dispatch_outbound_email(
             msg["Auto-Submitted"] = "auto-generated"
             msg.attach(MIMEText(body, "plain"))
 
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10.0) as server:
+            # Fallback to FROM_EMAIL if SMTP_USER was left as placeholder
+            effective_user = SMTP_USER if (SMTP_USER and SMTP_USER != "your_email@gmail.com") else FROM_EMAIL
+
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=12.0) as server:
                 server.starttls()
-                if SMTP_USER and SMTP_PASS:
-                    server.login(SMTP_USER, SMTP_PASS)
+                if effective_user and SMTP_PASS:
+                    server.login(effective_user, SMTP_PASS)
                 server.send_message(msg)
+        except smtplib.SMTPRecipientsRefused as e:
+            status = "BOUNCED"
+            error_message = f"Mailbox does not exist (SMTP 550 Refused): {e.recipients}"
+        except smtplib.SMTPAuthenticationError as e:
+            status = "FAILED"
+            error_message = f"Google SMTP Authentication failed: Check your App Password in .env ({e})"
+        except smtplib.SMTPException as e:
+            status = "FAILED"
+            error_message = f"SMTP Transmission error: {e}"
         except Exception as e:
             status = "FAILED"
             error_message = str(e)

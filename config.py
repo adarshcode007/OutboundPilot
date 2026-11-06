@@ -46,7 +46,7 @@ def get_llm(
         Configured ChatGroq instance.
     """
     api_key = get_groq_api_key()
-    selected_model = model_name or os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+    selected_model = model_name or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     
     return ChatGroq(
         groq_api_key=api_key,

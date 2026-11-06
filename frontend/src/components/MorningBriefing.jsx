@@ -8,6 +8,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [editableDraft, setEditableDraft] = useState("");
+    const [recipientEmail, setRecipientEmail] = useState("");
     const [critique, setCritique] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [notice, setNotice] = useState(null);
@@ -43,6 +44,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
         if (currentLead) {
             const initialDraft = currentLead.email_draft || currentLead.cadence?.touch_1?.body || "";
             setEditableDraft(initialDraft);
+            setRecipientEmail(currentLead.contact_email || "");
             setCritique("");
             setNotice(null);
             setActiveTouchStep(1);
@@ -120,6 +122,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 edited_draft: editableDraft,
                 critique: critique,
                 lead_id: currentLead.id,
+                recipient_email: recipientEmail,
             };
 
             const res = await fetch(`${API_URL}/api/campaign/${threadId}/action`, {
@@ -129,6 +132,9 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
             });
 
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.detail || data.message || "Failed to process action");
+            }
 
             if (actionType === "REDRAFT") {
                 setEditableDraft(data.revised_draft || "");
@@ -265,8 +271,27 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                                 <div style={{ fontSize: "0.9rem", color: "var(--text-medium)" }}>
                                     {currentLead.contact_name || "Target Executive"} • {currentLead.role || "Executive Role"}
                                 </div>
-                                <div style={{ fontSize: "0.8rem", fontFamily: "JetBrains Mono", color: "var(--text-muted)", marginTop: "2px" }}>
-                                    {currentLead.contact_email}
+                                <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontSize: "0.78rem", color: "#a5b4fc", fontWeight: 700 }}>
+                                        ✉️ Send To:
+                                    </span>
+                                    <input
+                                        type="email"
+                                        value={recipientEmail}
+                                        onChange={(e) => setRecipientEmail(e.target.value)}
+                                        placeholder="target.exec@company.com (or personal test email)"
+                                        style={{
+                                            background: "#080c16",
+                                            border: "1px solid var(--border-subtle)",
+                                            color: "#ffffff",
+                                            padding: "4px 10px",
+                                            borderRadius: "6px",
+                                            fontSize: "0.82rem",
+                                            fontFamily: "JetBrains Mono, monospace",
+                                            width: "320px",
+                                            outline: "none"
+                                        }}
+                                    />
                                 </div>
                             </div>
                             {/* Priority & Tier Tag */}

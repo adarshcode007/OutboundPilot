@@ -124,6 +124,56 @@ def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = 
                 )
     return batch_id
 
+def insert_single_lead(
+    lead: Dict[str, Any],
+    thread_id: Optional[str] = None,
+    status: str = "PROCESSING"
+) -> str:
+    """Inserts a single interactive lead into lead_queue with computed priority score and returns UUID."""
+    batch_id = f"single_{uuid.uuid4().hex[:8]}"
+    now = datetime.now()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO lead_queue (
+                    batch_id, company, role, contact_name, contact_email,
+                    priority_score, priority_tier, priority_tags,
+                    status, thread_id, processed_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+                """,
+                (
+                    batch_id,
+                    lead.get("company", "Unknown"),
+                    lead.get("role", "Target Role"),
+                    lead.get("contact_name", ""),
+                    lead.get("contact_email", ""),
+                    lead.get("priority_score", 0),
+                    lead.get("priority_tier", "MEDIUM"),
+                    json.dumps(lead.get("priority_tags", [])),
+                    status,
+                    thread_id,
+                    now
+                )
+            )
+            lead_id = str(cur.fetchone()[0])
+            return lead_id
+
+def get_lead_by_thread_id(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves lead details by LangGraph thread_id."""
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM lead_queue WHERE thread_id = %s LIMIT 1", (thread_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            colnames = [desc[0] for desc in cur.description]
+            lead = dict(zip(colnames, row))
+            lead["id"] = str(lead["id"])
+            return lead
+
 def list_queued_leads(status: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
     """Retrieves leads sorted descending by priority score with full enrichments."""
     with pool.connection() as conn:
@@ -192,6 +242,7 @@ def update_lead_status(
     eval_score: Optional[int] = None,
     eval_verdict: Optional[str] = None,
     eval_critique: Optional[str] = None,
+    contact_email: Optional[str] = None,
 ):
     """Updates campaign progress and artifacts for a specific lead."""
     now = datetime.now()
@@ -209,13 +260,14 @@ def update_lead_status(
                     eval_score = COALESCE(%s, eval_score),
                     eval_verdict = COALESCE(%s, eval_verdict),
                     eval_critique = COALESCE(%s, eval_critique),
+                    contact_email = COALESCE(%s, contact_email),
                     processed_at = %s
                 WHERE id = %s
                 """,
                 (
                     status, thread_id, research_summary, icp_fit_score,
                     icp_rationale, email_draft, eval_score, eval_verdict,
-                    eval_critique, now, lead_id
+                    eval_critique, contact_email, now, lead_id
                 )
             )
 
