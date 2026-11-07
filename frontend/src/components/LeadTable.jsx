@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+import { apiFetch } from '../apiClient';
 
 export default function LeadTable({
     leads = [],
@@ -17,7 +16,7 @@ export default function LeadTable({
     // Fetch live scheduler status
     const fetchSchedulerStatus = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/scheduler/status`);
+            const res = await apiFetch("/api/scheduler/status");
             if (res.ok) {
                 const data = await res.json();
                 setSchedulerInfo(data);
@@ -76,9 +75,8 @@ export default function LeadTable({
         setActionNotice(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/leads/process-selected`, {
+            const res = await apiFetch("/api/leads/process-selected", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lead_ids: Array.from(selectedIds) }),
             });
 
@@ -104,7 +102,7 @@ export default function LeadTable({
         setActionNotice(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/scheduler/run-now`, {
+            const res = await apiFetch("/api/scheduler/run-now", {
                 method: "POST"
             });
             const data = await res.json();

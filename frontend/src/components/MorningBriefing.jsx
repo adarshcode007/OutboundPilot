@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+import { apiFetch } from '../apiClient';
 
 export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
     // Only review leads that are DRAFTED (awaiting review)
@@ -24,7 +23,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
     // Fetch stored cadence for the active lead
     const fetchCadence = async (leadId) => {
         try {
-            const res = await fetch(`${API_URL}/api/leads/${leadId}/cadence`);
+            const res = await apiFetch(`/api/leads/${leadId}/cadence`);
             if (res.ok) {
                 const data = await res.json();
                 setCadence(data.cadence || null);
@@ -59,7 +58,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
         setNotice(null);
 
         try {
-            const res = await fetch(`${API_URL}/api/leads/${currentLead.id}/cadence/generate`, {
+            const res = await apiFetch(`/api/leads/${currentLead.id}/cadence/generate`, {
                 method: "POST",
             });
             if (!res.ok) throw new Error("Failed to generate cadence");
@@ -125,9 +124,8 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 recipient_email: recipientEmail,
             };
 
-            const res = await fetch(`${API_URL}/api/campaign/${threadId}/action`, {
+            const res = await apiFetch(`/api/campaign/${threadId}/action`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 

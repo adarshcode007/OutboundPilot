@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { PRESETS } from '../data/presets';
+import { apiFetch, setOnUnauthorized, API_URL } from '../apiClient';
 
 import CsvUploader from './CsvUploader';
 import LeadTable from './LeadTable';
 import MorningBriefing from './MorningBriefing';
 import AnalyticsDashboard from './AnalyticsDashboard';
-
-const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+import AuthModal from './AuthModal';
 
 export default function CommandCenter({ onNavigate, selectedPreset }) {
+  // Auth State
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   // Ingestion Form State
   const [company, setCompany] = useState(selectedPreset ? selectedPreset.company : "Stripe");
   const [role, setRole] = useState(selectedPreset ? selectedPreset.role : "Head of Engineering");
@@ -48,14 +52,53 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [quotaStats, setQuotaStats] = useState({ daily_limit: 10, used_today: 0, remaining_today: 10 });
   const [showBriefing, setShowBriefing] = useState(false);
 
-  // Fetch PostgreSQL campaign history
+  // Check Auth & Fetch Initial Data on Mount
   useEffect(() => {
-    fetchHistory();
+    setOnUnauthorized(() => {
+      setCurrentUser(null);
+      setShowAuthModal(true);
+    });
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await apiFetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser(data.user);
+        if (data.quota) setQuotaStats(data.quota);
+        fetchHistory();
+        fetchLeads();
+      } else {
+        setShowAuthModal(true);
+      }
+    } catch (e) {
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {}
+    setCurrentUser(null);
+    setQueueLeads([]);
+    setCampaignHistory([]);
+    setShowAuthModal(true);
+  };
+
+  const handleAuthSuccess = (userData) => {
+    const user = userData.user || userData;
+    setCurrentUser(user);
+    setShowAuthModal(false);
+    fetchLeads();
+    fetchHistory();
+  };
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/campaigns`);
+      const res = await apiFetch("/api/campaigns");
       if (res.ok) {
         const data = await res.json();
         setCampaignHistory(data.campaigns || []);
@@ -67,7 +110,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
   const fetchLeads = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/leads`);
+      const res = await apiFetch("/api/leads");
       if (res.ok) {
         const data = await res.json();
         setQueueLeads(data.leads || []);
@@ -76,11 +119,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     } catch (e) {
       console.warn("Could not reach /api/leads: ", e);
     }
-  }
-
-  useEffect(() => {
-    fetchLeads();
-  }, [])
+  };
 
   // Poll current campaign state
   useEffect(() => {
@@ -88,7 +127,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_URL}/api/campaign/${threadId}`);
+        const res = await apiFetch(`/api/campaign/${threadId}`);
         if (res.ok) {
           const data = await res.json();
           setCampaignState(data);
@@ -121,6 +160,10 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   // Launch Campaign
   const handleStart = async (e) => {
     if (e) e.preventDefault();
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
     setLoading(true);
     setCampaignState(null);
     setEditableDraft("");
@@ -129,9 +172,8 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     setStatusNotice(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/campaign/start`, {
+      const res = await apiFetch("/api/campaign/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company, role, contact_name: name, contact_email: email })
       });
 
@@ -155,7 +197,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     setCadenceLoading(true);
     setStatusNotice(null);
     try {
-      const res = await fetch(`${API_URL}/api/leads/${campaignState.lead_id}/cadence/generate`, {
+      const res = await apiFetch(`/api/leads/${campaignState.lead_id}/cadence/generate`, {
         method: "POST"
       });
       if (!res.ok) {
@@ -190,9 +232,8 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         recipient_email: campaignState?.target_contact_email,
       };
 
-      const res = await fetch(`${API_URL}/api/campaign/${threadId}/action`, {
+      const res = await apiFetch(`/api/campaign/${threadId}/action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
@@ -204,11 +245,11 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         setEditableDraft(data.revised_draft);
         setCritique("");
         setStatusNotice("✓ AI Copywriter revised proposal based on your feedback!");
-        const stateRes = await fetch(`${API_URL}/api/campaign/${threadId}`);
+        const stateRes = await apiFetch(`/api/campaign/${threadId}`);
         setCampaignState(await stateRes.json());
       } else {
         setStatusNotice(data.message || "Action processed successfully.");
-        const stateRes = await fetch(`${API_URL}/api/campaign/${threadId}`);
+        const stateRes = await apiFetch(`/api/campaign/${threadId}`);
         setCampaignState(await stateRes.json());
       }
     } catch (err) {
@@ -252,12 +293,36 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           </div>
           <div className="pill">
             <span style={{ color: "#38bdf8" }}>🐘</span>
-            PostgreSQL: Checkpointed
+            PostgreSQL: Scoped
           </div>
-          <div className="pill">
-            <span style={{ color: "#fbbf24" }}>⚡</span>
-            Groq: gpt-oss-20b
-          </div>
+
+          {/* User Profile Pill / Auth Actions */}
+          {currentUser ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "6px" }}>
+              <div className="pill" style={{ background: "rgba(99, 102, 241, 0.15)", border: "1px solid var(--border-accent)" }}>
+                <span style={{ fontSize: "0.85rem" }}>👤</span>
+                <span style={{ fontWeight: 700, color: "#e2e8f0" }}>{currentUser.full_name || currentUser.email}</span>
+                <span style={{ fontSize: "0.7rem", color: "#a5b4fc", marginLeft: "4px" }}>
+                  ({quotaStats.remaining_today}/{quotaStats.daily_limit} quota)
+                </span>
+              </div>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: "0.75rem", padding: "4px 10px" }}
+                onClick={handleLogout}
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: "0.78rem", padding: "5px 12px", marginLeft: "6px" }}
+              onClick={() => setShowAuthModal(true)}
+            >
+              🔐 Sign In
+            </button>
+          )}
         </div>
       </header>
 
@@ -658,6 +723,15 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           onRefresh={fetchLeads}
         />
       )}
+
+      {/* User Authentication Modal (JWT + httpOnly Cookie) */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          if (currentUser) setShowAuthModal(false);
+        }}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

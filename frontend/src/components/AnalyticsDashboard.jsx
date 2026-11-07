@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+import { apiFetch } from '../apiClient';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState(null);
@@ -12,7 +11,7 @@ export default function AnalyticsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/analytics`);
+      const res = await apiFetch("/api/analytics");
       if (!res.ok) {
         throw new Error(`Server returned HTTP ${res.status}`);
       }

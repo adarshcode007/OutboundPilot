@@ -75,29 +75,48 @@ def init_queue_schema():
                 CREATE INDEX IF NOT EXISTS idx_lead_queue_processed ON lead_queue(processed_at);
             """)
 
-def get_daily_quota_stats() -> Dict[str, int]:
-    """Calculates how many leads were processed today and how many quota slots remain."""
+def get_daily_quota_stats(user_id: Optional[str] = None) -> Dict[str, int]:
+    """Calculates how many leads were processed today and how many quota slots remain for a user."""
     today_start = datetime.combine(date.today(), datetime.min.time())
+    daily_limit = DAILY_QUOTA_LIMIT
+
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT COUNT(*) FROM lead_queue
-                WHERE processed_at >= %s AND status != 'QUEUED'
-                """,
-                (today_start,)
-            )
+            if user_id:
+                try:
+                    cur.execute("SELECT daily_quota_limit FROM users WHERE id = %s", (user_id,))
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        daily_limit = row[0]
+                except Exception:
+                    pass
+
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM lead_queue
+                    WHERE processed_at >= %s AND status != 'QUEUED' AND user_id = %s
+                    """,
+                    (today_start, user_id)
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM lead_queue
+                    WHERE processed_at >= %s AND status != 'QUEUED'
+                    """,
+                    (today_start,)
+                )
             used_today = cur.fetchone()[0]
         
-    remaining = max(0, DAILY_QUOTA_LIMIT - used_today)
+    remaining = max(0, daily_limit - used_today)
     return {
-        "daily_limit": DAILY_QUOTA_LIMIT,
+        "daily_limit": daily_limit,
         "used_today": used_today,
         "remaining_today": remaining,
     }
 
-def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = None) -> str:
-    """Inserts a batch of scored leads into the queue."""
+def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional[str] = None, user_id: Optional[str] = None) -> str:
+    """Inserts a batch of scored leads into the queue, associated with a user."""
     if not batch_id:
         batch_id = f"batch_{uuid.uuid4().hex[:8]}"
     
@@ -107,8 +126,8 @@ def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = 
                 cur.execute(
                     """
                     INSERT INTO lead_queue (
-                    batch_id, company, role, contact_name, contact_email, priority_score, priority_tier, priority_tags, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'QUEUED')
+                    batch_id, company, role, contact_name, contact_email, priority_score, priority_tier, priority_tags, status, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'QUEUED', %s)
                     """,
 
                     (
@@ -119,7 +138,8 @@ def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = 
                         lead.get("contact_email", ""),
                         lead.get("priority_score", 0),
                         lead.get("priority_tier", "MEDIUM"),
-                        json.dumps(lead.get("priority_tags", []))
+                        json.dumps(lead.get("priority_tags", [])),
+                        user_id
                     )
                 )
     return batch_id
@@ -127,9 +147,10 @@ def insert_leads_batch(leads: List[Dict[str, Any]], batch_id: Optional["str"] = 
 def insert_single_lead(
     lead: Dict[str, Any],
     thread_id: Optional[str] = None,
-    status: str = "PROCESSING"
+    status: str = "PROCESSING",
+    user_id: Optional[str] = None
 ) -> str:
-    """Inserts a single interactive lead into lead_queue with computed priority score and returns UUID."""
+    """Inserts a single interactive lead into lead_queue with computed priority score and user association."""
     batch_id = f"single_{uuid.uuid4().hex[:8]}"
     now = datetime.now()
     with pool.connection() as conn:
@@ -139,9 +160,9 @@ def insert_single_lead(
                 INSERT INTO lead_queue (
                     batch_id, company, role, contact_name, contact_email,
                     priority_score, priority_tier, priority_tags,
-                    status, thread_id, processed_at
+                    status, thread_id, processed_at, user_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
                 """,
                 (
@@ -155,17 +176,21 @@ def insert_single_lead(
                     json.dumps(lead.get("priority_tags", [])),
                     status,
                     thread_id,
-                    now
+                    now,
+                    user_id
                 )
             )
             lead_id = str(cur.fetchone()[0])
             return lead_id
 
-def get_lead_by_thread_id(thread_id: str) -> Optional[Dict[str, Any]]:
-    """Retrieves lead details by LangGraph thread_id."""
+def get_lead_by_thread_id(thread_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves lead details by LangGraph thread_id, optionally filtered by user_id."""
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM lead_queue WHERE thread_id = %s LIMIT 1", (thread_id,))
+            if user_id:
+                cur.execute("SELECT * FROM lead_queue WHERE thread_id = %s AND user_id = %s LIMIT 1", (thread_id, user_id))
+            else:
+                cur.execute("SELECT * FROM lead_queue WHERE thread_id = %s LIMIT 1", (thread_id,))
             row = cur.fetchone()
             if not row:
                 return None
@@ -174,29 +199,28 @@ def get_lead_by_thread_id(thread_id: str) -> Optional[Dict[str, Any]]:
             lead["id"] = str(lead["id"])
             return lead
 
-def list_queued_leads(status: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
-    """Retrieves leads sorted descending by priority score with full enrichments."""
+def list_queued_leads(status: Optional[str] = None, limit: int = 100, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieves leads sorted descending by priority score with user scoping."""
     with pool.connection() as conn:
         with conn.cursor() as cur:
+            query = "SELECT * FROM lead_queue"
+            params = []
+            conditions = []
+
             if status:
-                cur.execute(
-                    """
-                    SELECT * FROM lead_queue
-                    WHERE status = %s
-                    ORDER BY priority_score DESC, created_at ASC
-                    LIMIT %s
-                    """,
-                    (status, limit)
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT * FROM lead_queue
-                    ORDER BY priority_score DESC, created_at ASC
-                    LIMIT %s
-                    """,
-                    (limit,)
-                )
+                conditions.append("status = %s")
+                params.append(status)
+            if user_id:
+                conditions.append("user_id = %s")
+                params.append(user_id)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY priority_score DESC, created_at ASC LIMIT %s"
+            params.append(limit)
+
+            cur.execute(query, tuple(params))
             colnames = [desc[0] for desc in cur.description]
             leads = []
             for row in cur.fetchall():
@@ -214,11 +238,14 @@ def list_queued_leads(status: Optional[str] = None, limit: int = 100) -> List[Di
                 leads.append(lead)
             return leads
         
-def get_lead_by_id(lead_id: str) -> Optional[Dict[str, Any]]:
-    """Retrieves full details of a single lead by UUID."""
+def get_lead_by_id(lead_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves full details of a single lead by UUID, optionally verifying user_id."""
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM lead_queue WHERE id = %s", (lead_id,))
+            if user_id:
+                cur.execute("SELECT * FROM lead_queue WHERE id = %s AND user_id = %s", (lead_id, user_id))
+            else:
+                cur.execute("SELECT * FROM lead_queue WHERE id = %s", (lead_id,))
             row = cur.fetchone()
             if not row:
                 return None
@@ -305,36 +332,49 @@ def log_dispatch_event(
     error_message: Optional[str] = None,
     lead_id: Optional[str] = None,
     thread_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> str:
-    """Logs an email dispatch event into the PostgreSQL dispatch_ledger."""
+    """Logs an email dispatch event into the PostgreSQL dispatch_ledger with user association."""
     body_preview = body[:200] if body else ""
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO dispatch_ledger (
-                    lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, user_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
-                (lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message)
+                (lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, user_id)
             )
             ledger_id = cur.fetchone()[0]
     return str(ledger_id)
 
-def list_dispatch_ledger(limit: int = 50) -> List[Dict[str, Any]]:
-    """Retrieves recent email dispatches from PostgreSQL."""
+def list_dispatch_ledger(limit: int = 50, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieves recent email dispatches from PostgreSQL scoped by user_id."""
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, dispatched_at
-                FROM dispatch_ledger
-                ORDER BY dispatched_at DESC
-                LIMIT %s
-                """,
-                (limit,)
-            )
+            if user_id:
+                cur.execute(
+                    """
+                    SELECT id, lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, dispatched_at
+                    FROM dispatch_ledger
+                    WHERE user_id = %s
+                    ORDER BY dispatched_at DESC
+                    LIMIT %s
+                    """,
+                    (user_id, limit)
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, lead_id, thread_id, recipient, subject, body_preview, provider, message_id, status, error_message, dispatched_at
+                    FROM dispatch_ledger
+                    ORDER BY dispatched_at DESC
+                    LIMIT %s
+                    """,
+                    (limit,)
+                )
             rows = cur.fetchall()
             return [{
                 "id": str(r[0]),
@@ -401,7 +441,7 @@ def record_inbound_reply(
         "reply_data": reply_payload,
     }
 
-def get_analytics_summary() -> Dict[str, Any]:
+def get_analytics_summary(user_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Computes real-time pipeline analytics, Token-Saver ROI economics,
     deliverability rates, and inbound engagement metrics from PostgreSQL.
@@ -409,11 +449,19 @@ def get_analytics_summary() -> Dict[str, Any]:
     with pool.connection() as conn:
         with conn.cursor() as cur:
             # 1. Lead Queue Status Counts
-            cur.execute("""
-                SELECT status, COUNT(*)
-                FROM lead_queue
-                GROUP BY status
-            """)
+            if user_id:
+                cur.execute("""
+                    SELECT status, COUNT(*)
+                    FROM lead_queue
+                    WHERE user_id = %s
+                    GROUP BY status
+                """, (user_id,))
+            else:
+                cur.execute("""
+                    SELECT status, COUNT(*)
+                    FROM lead_queue
+                    GROUP BY status
+                """)
             status_map = dict(cur.fetchall())
 
             total_leads = sum(status_map.values())
@@ -430,29 +478,43 @@ def get_analytics_summary() -> Dict[str, Any]:
             qualification_rate = round((qualified / evaluated_total * 100), 1) if evaluated_total > 0 else 0.0
 
             # 2. Token-Saver ROI Economics
-            # Skipping Copywriter (~2,000 tokens), Evaluator (~2,000 tokens) and Cadence (~2,500 tokens)
-            # saves ~6,500 Groq tokens per disqualified lead
             TOKENS_SAVED_PER_DISQUALIFIED = 6500
             tokens_saved = disqualified * TOKENS_SAVED_PER_DISQUALIFIED
-            # 100k tokens ~= 1 full day of Groq free tier limit
             free_tier_days_preserved = round(tokens_saved / 100000, 2)
 
             # 3. Average AI Quality & ICP Scores
-            cur.execute("""
-                SELECT 
-                    ROUND(AVG(icp_fit_score)::numeric, 1),
-                    ROUND(AVG(eval_score)::numeric, 1)
-                FROM lead_queue
-                WHERE icp_fit_score IS NOT NULL AND icp_fit_score > 0
-            """)
+            if user_id:
+                cur.execute("""
+                    SELECT 
+                        ROUND(AVG(icp_fit_score)::numeric, 1),
+                        ROUND(AVG(eval_score)::numeric, 1)
+                    FROM lead_queue
+                    WHERE icp_fit_score IS NOT NULL AND icp_fit_score > 0 AND user_id = %s
+                """, (user_id,))
+            else:
+                cur.execute("""
+                    SELECT 
+                        ROUND(AVG(icp_fit_score)::numeric, 1),
+                        ROUND(AVG(eval_score)::numeric, 1)
+                    FROM lead_queue
+                    WHERE icp_fit_score IS NOT NULL AND icp_fit_score > 0
+                """)
             avg_icp, avg_eval = cur.fetchone()
 
             # 4. Deliverability Ledger Breakdown
-            cur.execute("""
-                SELECT status, COUNT(*)
-                FROM dispatch_ledger
-                GROUP BY status
-            """)
+            if user_id:
+                cur.execute("""
+                    SELECT status, COUNT(*)
+                    FROM dispatch_ledger
+                    WHERE user_id = %s
+                    GROUP BY status
+                """, (user_id,))
+            else:
+                cur.execute("""
+                    SELECT status, COUNT(*)
+                    FROM dispatch_ledger
+                    GROUP BY status
+                """)
             dispatch_map = dict(cur.fetchall())
             total_dispatched_emails = sum(dispatch_map.values())
             delivered_count = dispatch_map.get("DELIVERED", 0)
@@ -460,12 +522,20 @@ def get_analytics_summary() -> Dict[str, Any]:
             deliverability_rate = round((delivered_count / total_dispatched_emails * 100), 1) if total_dispatched_emails > 0 else 100.0
 
             # 5. Inbound Reply Sentiment Breakdown
-            cur.execute("""
-                SELECT reply_data->>'sentiment', COUNT(*)
-                FROM lead_queue
-                WHERE reply_data IS NOT NULL
-                GROUP BY reply_data->>'sentiment'
-            """)
+            if user_id:
+                cur.execute("""
+                    SELECT reply_data->>'sentiment', COUNT(*)
+                    FROM lead_queue
+                    WHERE reply_data IS NOT NULL AND user_id = %s
+                    GROUP BY reply_data->>'sentiment'
+                """, (user_id,))
+            else:
+                cur.execute("""
+                    SELECT reply_data->>'sentiment', COUNT(*)
+                    FROM lead_queue
+                    WHERE reply_data IS NOT NULL
+                    GROUP BY reply_data->>'sentiment'
+                """)
             sentiment_map = dict(cur.fetchall())
             interested_count = sentiment_map.get("INTERESTED", 0)
             referral_count = sentiment_map.get("REFERRAL", 0)

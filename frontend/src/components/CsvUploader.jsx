@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-
-const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+import { apiFetch } from '../apiClient';
 
 // Fuzzy header mapping rules
 const HEADER_MAP = {
@@ -69,9 +68,8 @@ export default function CsvUploader({ onUploadSuccess }) {
             }
 
             // Send to backend for zero-token regex scoring and PostgreSQL insertion
-            const res = await fetch(`${API_URL}/api/leads/upload`, {
+            const res = await apiFetch("/api/leads/upload", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ leads: parsedLeads }),
             });
 

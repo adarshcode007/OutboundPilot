@@ -81,6 +81,7 @@ def dispatch_outbound_email(
     role: Optional[str] = None,
     icp_score: Optional[int] = None,
     eval_score: Optional[int] = None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Dispatches outbound email through the best available provider with
         deliverability guardrails, audit logging and Slack/webhook alerts.
@@ -98,6 +99,7 @@ def dispatch_outbound_email(
             error_message=error_msg,
             lead_id=lead_id,
             thread_id=thread_id,
+            user_id=user_id,
         )
         send_slack_dispatch_alert(
             company=company or "Target Account",
@@ -205,6 +207,7 @@ def dispatch_outbound_email(
         error_message=error_message,
         lead_id=lead_id,
         thread_id=thread_id,
+        user_id=user_id,
     )
 
     # 4. Trigger Real-Time Slack Alert

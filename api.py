@@ -11,12 +11,33 @@ from notifier import send_slack_dispatch_alert
 from dispatcher import dispatch_outbound_email
 import os
 import uuid
+import json
 from typing import Optional, Literal
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 load_dotenv()
+
+from auth import (
+    UserRegisterRequest,
+    UserLoginRequest,
+    UserResponse,
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    save_refresh_token,
+    verify_and_revoke_refresh_token,
+    revoke_refresh_token,
+    set_auth_cookies,
+    clear_auth_cookies,
+    get_current_user,
+    get_user_by_email,
+    get_user_by_id,
+    create_user,
+    init_auth_schema,
+)
 
 from psycopg_pool import ConnectionPool
 from langgraph.checkpoint.postgres import PostgresSaver
@@ -43,6 +64,7 @@ from queue_manager import (
     get_lead_cadence,
     record_inbound_reply,
     get_analytics_summary,
+    list_dispatch_ledger,
 )
 
 from scheduler import scheduler
@@ -56,20 +78,26 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Initialize PostgreSQL Lead Queue table
+# Initialize PostgreSQL Lead Queue and Auth tables
 try:
     init_queue_schema()
-    print(">> [API] Initialized PostgreSQL lead_queue schema.")
+    init_auth_schema()
+    print(">> [API] Initialized PostgreSQL lead_queue and auth schemas.")
 except Exception as e:
-    print(f">> [API] Failed to initialize lead_queue ({e}).")
+    print(f">> [API] Failed to initialize database schemas ({e}).")
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# Enable CORS for frontend applications (React, Next.js, Vite)
+# Enable CORS with credentials for frontend applications (React, Next.js, Vite)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -158,18 +186,114 @@ def root():
     }
 
 
+# ---------------------------------------------------------------------------
+# Authentication Endpoints (JWT in httpOnly Cookies + DB-Backed Refresh Token)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/register", response_model=UserResponse)
+def register_user(payload: UserRegisterRequest, response: Response):
+    """Registers a new user, hashes password with bcrypt, and sets secure httpOnly cookies."""
+    existing = get_user_by_email(payload.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+    
+    pass_hash = hash_password(payload.password)
+    user = create_user(email=payload.email, password_hash=pass_hash, full_name=payload.full_name or "")
+    
+    # Issue Tokens
+    access_token = create_access_token(user["id"], user["email"])
+    raw_refresh, token_hash, expires_at = create_refresh_token(user["id"])
+    save_refresh_token(user["id"], token_hash, expires_at)
+    
+    # Set httpOnly cookies
+    set_auth_cookies(response, access_token, raw_refresh)
+    return user
+
+@app.post("/api/auth/login", response_model=UserResponse)
+def login_user(payload: UserLoginRequest, response: Response):
+    """Authenticates user credentials and issues access & refresh tokens via httpOnly cookies."""
+    user = get_user_by_email(payload.email)
+    if not user or not verify_password(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    
+    access_token = create_access_token(user["id"], user["email"])
+    raw_refresh, token_hash, expires_at = create_refresh_token(user["id"])
+    save_refresh_token(user["id"], token_hash, expires_at)
+    
+    set_auth_cookies(response, access_token, raw_refresh)
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "full_name": user["full_name"],
+        "daily_quota_limit": user["daily_quota_limit"],
+        "created_at": user["created_at"],
+    }
+
+@app.post("/api/auth/refresh")
+def refresh_session(request: Request, response: Response):
+    """Refreshes the access token using the database-backed refresh token cookie."""
+    raw_refresh = request.cookies.get("refresh_token")
+    if not raw_refresh:
+        raise HTTPException(status_code=401, detail="Refresh token missing. Please log in.")
+    
+    # Rotate token: consume old refresh token and verify validity
+    user_id = verify_and_revoke_refresh_token(raw_refresh)
+    if not user_id:
+        clear_auth_cookies(response)
+        raise HTTPException(status_code=401, detail="Session expired or invalid refresh token. Please log in again.")
+    
+    user = get_user_by_id(user_id)
+    if not user:
+        clear_auth_cookies(response)
+        raise HTTPException(status_code=401, detail="User not found.")
+    
+    # Issue new token pair (refresh token rotation)
+    new_access = create_access_token(user["id"], user["email"])
+    new_raw_refresh, new_token_hash, expires_at = create_refresh_token(user["id"])
+    save_refresh_token(user["id"], new_token_hash, expires_at)
+    
+    set_auth_cookies(response, new_access, new_raw_refresh)
+    return {"status": "SUCCESS", "user": user}
+
+@app.post("/api/auth/logout")
+def logout_user(request: Request, response: Response):
+    """Revokes the refresh token from the database and clears auth cookies."""
+    raw_refresh = request.cookies.get("refresh_token")
+    if raw_refresh:
+        revoke_refresh_token(raw_refresh)
+    clear_auth_cookies(response)
+    return {"status": "LOGGED_OUT", "message": "Successfully logged out."}
+
+@app.get("/api/auth/me")
+def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+    """Returns the authenticated user's profile and live daily quota stats."""
+    quota_stats = get_daily_quota_stats(user_id=current_user["id"])
+    return {
+        "user": current_user,
+        "quota": quota_stats,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Campaign & Lead Ingestion Endpoints (Scoped to Current User)
+# ---------------------------------------------------------------------------
+
 @app.post("/api/campaign/start", status_code=202)
-def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTasks):
+def start_campaign(
+    payload: CampaignStartRequest, 
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
     """Endpoint 1: Trigger autonomous intelligence gathering.
     
     Unified workflow for Single Lead Ingestion:
-    1. Enforces daily quota limit.
+    1. Enforces user-specific daily quota limit.
     2. Computes regex priority scores & tags (0 Groq tokens).
-    3. Inserts into PostgreSQL lead_queue table (decrements daily quota & creates lead_id).
+    3. Inserts into PostgreSQL lead_queue table with user_id.
     4. Runs Researcher -> Analyst -> Copywriter -> Evaluator.
     5. Saves state back into lead_queue (enables 3-touch cadence generation).
     """
-    quota_stats = get_daily_quota_stats()
+    quota_stats = get_daily_quota_stats(user_id=current_user["id"])
     if quota_stats["remaining_today"] <= 0:
         raise HTTPException(
             status_code=429,
@@ -189,8 +313,8 @@ def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTa
     scored_leads = prioritize_leads_batch([lead_dict])
     scored_lead = scored_leads[0] if scored_leads else lead_dict
 
-    # 2. Insert into lead_queue table (counts toward daily quota and allows cadence)
-    lead_id = insert_single_lead(scored_lead, thread_id=thread_id, status="PROCESSING")
+    # 2. Insert into lead_queue table with user_id
+    lead_id = insert_single_lead(scored_lead, thread_id=thread_id, status="PROCESSING", user_id=current_user["id"])
 
     initial_state = {
         "messages": [HumanMessage(content=f"Launch outbound campaign for {payload.contact_name} at {payload.company}")],
@@ -244,14 +368,14 @@ def start_campaign(payload: CampaignStartRequest, background_tasks: BackgroundTa
 
 
 @app.get("/api/campaign/{thread_id}")
-def get_campaign_state(thread_id: str):
+def get_campaign_state(thread_id: str, current_user: dict = Depends(get_current_user)):
     """Endpoint 2: Fetch campaign state snapshot for the Frontend UI.
     
     Returns the research brief, ICP score, AI quality seal, email draft, and cadence.
     """
     thread_config = {"configurable": {"thread_id": thread_id}}
     snapshot = sdr_graph.get_state(thread_config)
-    lead = get_lead_by_thread_id(thread_id)
+    lead = get_lead_by_thread_id(thread_id, user_id=current_user["id"])
 
     if not snapshot or not snapshot.values:
         if lead:
@@ -311,7 +435,11 @@ def get_campaign_state(thread_id: str):
 
 
 @app.post("/api/campaign/{thread_id}/action")
-def submit_human_action(thread_id: str, payload: HumanActionRequest):
+def submit_human_action(
+    thread_id: str, 
+    payload: HumanActionRequest,
+    current_user: dict = Depends(get_current_user)
+):
     """Endpoint 3: Submit human review feedback (Approve, Re-draft, Reject).
     
     - APPROVE: Applies manual edits, resumes graph/dispatches email, and marks lead as APPROVED in lead_queue.
@@ -324,15 +452,15 @@ def submit_human_action(thread_id: str, payload: HumanActionRequest):
     # Resolve lead from database if lead_id provided or by thread_id
     lead = None
     if payload.lead_id:
-        lead = get_lead_by_id(payload.lead_id)
+        lead = get_lead_by_id(payload.lead_id, user_id=current_user["id"])
     if not lead and thread_id and pool:
         try:
             with pool.connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM lead_queue WHERE thread_id = %s LIMIT 1", (thread_id,))
+                    cur.execute("SELECT id FROM lead_queue WHERE thread_id = %s AND user_id = %s LIMIT 1", (thread_id, current_user["id"]))
                     row = cur.fetchone()
                     if row:
-                        lead = get_lead_by_id(str(row[0]))
+                        lead = get_lead_by_id(str(row[0]), user_id=current_user["id"])
         except Exception:
             pass
 
@@ -381,6 +509,7 @@ def submit_human_action(thread_id: str, payload: HumanActionRequest):
                 role=lead.get("role") if lead else None,
                 icp_score=lead.get("icp_fit_score") if lead else None,
                 eval_score=lead.get("eval_score") if lead else None,
+                user_id=current_user["id"],
             )
             receipt = receipt_info.get("detail", "Dispatched.")
             if receipt_info.get("status") in ["FAILED", "BOUNCED", "BLOCKED"]:
@@ -500,16 +629,16 @@ def list_all_campaigns():
 
 # Milestone 10 & 11: Lead Queue, Smart Prioritization & Quota Endpoints
 @app.post("/api/leads/upload")
-def upload_leads_batch(payload: LeadBatchUploadRequest):
-    """Uploads, scores via Regex (0 tokens), and queues leads in PostgreSQL."""
+def upload_leads_batch(payload: LeadBatchUploadRequest, current_user: dict = Depends(get_current_user)):
+    """Uploads, scores via Regex (0 tokens), and queues leads in PostgreSQL for current user."""
     if not payload.leads:
         raise HTTPException(status_code=400, detail="No leads provided.")
 
     # 1. Score leads using deterministic regex heuristics (Milestone 9)
     scored_leads = prioritize_leads_batch(payload.leads)
 
-    # 2. Insert into PostgreSQL queue
-    batch_id = insert_leads_batch(scored_leads)
+    # 2. Insert into PostgreSQL queue scoped to current user
+    batch_id = insert_leads_batch(scored_leads, user_id=current_user["id"])
 
     return {
         "status": "SUCCESS",
@@ -519,10 +648,14 @@ def upload_leads_batch(payload: LeadBatchUploadRequest):
     }
 
 @app.get("/api/leads")
-def get_leads_queue(status: Optional[str] = None, limit: int = 100):
-    """Retrieves queued leads sorted by priority along with daily quota stats."""
-    quota_stats = get_daily_quota_stats()
-    leads = list_queued_leads(status=status, limit=limit)
+def get_leads_queue(
+    status: Optional[str] = None, 
+    limit: int = 100, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Retrieves queued leads sorted by priority along with daily quota stats for current user."""
+    quota_stats = get_daily_quota_stats(user_id=current_user["id"])
+    leads = list_queued_leads(status=status, limit=limit, user_id=current_user["id"])
     return {
         "quota": quota_stats,
         "total_leads": len(leads),
@@ -530,9 +663,13 @@ def get_leads_queue(status: Optional[str] = None, limit: int = 100):
     }
 
 @app.post("/api/leads/process-selected")
-def process_selected_leads(payload: ProcessSelectedLeadsRequest, background_tasks: BackgroundTasks):
-    """Processes selected leads sequentially with Groq quota protection."""
-    quota_stats = get_daily_quota_stats()
+def process_selected_leads(
+    payload: ProcessSelectedLeadsRequest, 
+    background_tasks: BackgroundTasks, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Processes selected leads sequentially with Groq quota protection for current user."""
+    quota_stats = get_daily_quota_stats(user_id=current_user["id"])
     remaining = quota_stats["remaining_today"]
 
     if len(payload.lead_ids) > remaining:
@@ -540,7 +677,7 @@ def process_selected_leads(payload: ProcessSelectedLeadsRequest, background_task
     
     def run_batch():
         for lead_id in payload.lead_ids:
-            lead = get_lead_by_id(lead_id)
+            lead = get_lead_by_id(lead_id, user_id=current_user["id"])
             if not lead or lead["status"] in ["DRAFTED", "APPROVED", "DISPATCHED"]:
                 continue
 
@@ -598,9 +735,9 @@ def process_selected_leads(payload: ProcessSelectedLeadsRequest, background_task
     }
 
 @app.post("/api/leads/cron-trigger")
-def trigger_daily_cron(background_tasks: BackgroundTasks):
-    """Simulates daily 8:00 AM cron drip, auto-picking top priority queued leads up to quota."""
-    quota_stats = get_daily_quota_stats()
+def trigger_daily_cron(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Simulates daily 8:00 AM cron drip for current user, auto-picking top priority queued leads up to quota."""
+    quota_stats = get_daily_quota_stats(user_id=current_user["id"])
     remaining = quota_stats["remaining_today"]
 
     if remaining <= 0:
@@ -610,7 +747,7 @@ def trigger_daily_cron(background_tasks: BackgroundTasks):
             "quota": quota_stats,
         }
     
-    queued_leads = list_queued_leads(status="QUEUED", limit=remaining)
+    queued_leads = list_queued_leads(status="QUEUED", limit=remaining, user_id=current_user["id"])
     lead_ids = [l["id"] for l in queued_leads]
 
     if not lead_ids:
@@ -618,7 +755,7 @@ def trigger_daily_cron(background_tasks: BackgroundTasks):
     
     # Delegate to process_selected_leads
     req = ProcessSelectedLeadsRequest(lead_ids=lead_ids)
-    return process_selected_leads(req, background_tasks)
+    return process_selected_leads(req, background_tasks, current_user=current_user)
 
 
 # Autonomous Background Scheduler Lifecycle & Control Endpoints
@@ -747,6 +884,12 @@ def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
 
 # Analytics & Token-Saver ROI Endpoint
 @app.get("/api/analytics")
-def get_analytics_endpoint():
-    """Returns comprehensive pipeline analytics and Token-Saver ROI metrics."""
-    return get_analytics_summary()
+def get_analytics_endpoint(current_user: dict = Depends(get_current_user)):
+    """Returns comprehensive pipeline analytics and Token-Saver ROI metrics scoped to current user."""
+    return get_analytics_summary(user_id=current_user["id"])
+
+# Dispatches Audit Ledger Endpoint
+@app.get("/api/dispatches")
+def list_dispatches_endpoint(limit: int = 50, current_user: dict = Depends(get_current_user)):
+    """Retrieves immutable audit ledger of dispatched outbound emails for this user."""
+    return list_dispatch_ledger(limit=limit, user_id=current_user["id"])
