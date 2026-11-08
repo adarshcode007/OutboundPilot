@@ -200,17 +200,29 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0B1220]/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 transition-opacity">
-      <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-[#0B1220]/60 dark:bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 transition-opacity">
+      <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transition-colors">
         {/* Header Bar */}
-        <div className="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between bg-white">
+        <div className="px-6 py-4 border-b border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between bg-white dark:bg-[#0E1422]">
           <div className="flex items-center gap-3">
-            <span className="text-xl">☀️</span>
+            <div className="w-8 h-8 rounded-lg bg-[#FAFBFD] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-center text-[#3B6BF0]">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2" />
+                <path d="M12 20v2" />
+                <path d="M4.93 4.93l1.41 1.41" />
+                <path d="M17.66 17.66l1.41 1.41" />
+                <path d="M2 12h2" />
+                <path d="M20 12h2" />
+                <path d="M6.34 17.66l-1.41 1.41" />
+                <path d="M19.07 4.93l-1.41 1.41" />
+              </svg>
+            </div>
             <div>
-              <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+              <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                 Morning SDR Card-Swipe Briefing
               </h3>
-              <p className="text-xs text-[#6B7280]">
+              <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
                 {reviewLeads.length > 0
                   ? `Reviewing ${currentIndex + 1} of ${reviewLeads.length} prioritized drafts`
                   : "All morning drafts processed"}
@@ -221,13 +233,13 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCsv}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] dark:bg-[#161F33] hover:bg-[#EBEBF2] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] transition-colors"
             >
               📥 Export CSV
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#0B1220] hover:bg-[#F5F5FA] transition-colors"
+              className="p-1.5 rounded-lg text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] transition-colors"
             >
               ✕
             </button>
@@ -239,15 +251,15 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
           {reviewLeads.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-4xl mb-3">🎉</div>
-              <h4 className="font-serif text-2xl text-[#0B1220] mb-2">
+              <h4 className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] mb-2">
                 All drafts reviewed and cleared!
               </h4>
-              <p className="text-xs text-[#6B7280] max-w-sm mx-auto mb-6">
+              <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] max-w-sm mx-auto mb-6">
                 No more campaigns awaiting sign-off. Launch new leads from your queue or trigger the scheduled drip.
               </p>
               <button
                 onClick={onClose}
-                className="bg-[#0B1220] text-white text-xs font-medium px-4 py-2 rounded-lg"
+                className="bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-xs font-medium px-4 py-2 rounded-lg"
               >
                 Close Briefing
               </button>
@@ -261,27 +273,27 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
               )}
 
               {/* Target Account Overview */}
-              <div className="bg-[#F5F5FA] border border-[#E5E7EB] rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-[#F5F5FA] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-serif text-2xl text-[#0B1220] tracking-tight">
+                    <h4 className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                       {currentLead.company}
                     </h4>
-                    <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                       {currentLead.priority_score} pts Priority
                     </span>
                   </div>
-                  <div className="text-xs text-[#6B7280]">
+                  <div className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
                     {currentLead.role || "Executive Contact"} • {currentLead.contact_name || "Target Executive"}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-xs font-semibold text-[#0B1220]">
+                    <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
                       ICP: {currentLead.icp_fit_score || 8}/10
                     </div>
-                    <div className="text-[11px] text-[#6B7280]">
+                    <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
                       Judge: {currentLead.eval_score || 9}/10 (Grounded)
                     </div>
                   </div>
@@ -289,9 +301,9 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
               </div>
 
               {/* 3-Touch Follow-up Cadence Selector */}
-              <div className="p-4 rounded-xl border border-[#E5E7EB] bg-white">
+              <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0E1422]">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] flex items-center gap-1.5">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-1.5">
                     <span>📅</span>
                     <span>3-Touch Outbound Cadence</span>
                   </div>
@@ -307,7 +319,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 </div>
 
                 {cadence && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {[
                       { step: 1, label: "Touch 1: Hook (Day 1)", data: cadence.touch_1 },
                       { step: 2, label: "Touch 2: Value Bump (Day 3)", data: cadence.touch_2 },
@@ -321,8 +333,8 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                           activeTouchStep === t.step
-                            ? "bg-[#0B1220] text-white"
-                            : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+                            ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220]"
+                            : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
                         }`}
                       >
                         {t.label}
@@ -334,7 +346,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
 
               {/* Editable Draft */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-2">
                   Draft Proposal (Editable before sending)
                 </label>
                 <textarea
@@ -342,13 +354,13 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                   value={editableDraft}
                   onChange={(e) => setEditableDraft(e.target.value)}
                   rows={6}
-                  className="w-full p-4 rounded-xl border border-[#E5E7EB] bg-white text-sm text-[#0B1220] font-sans leading-relaxed focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                  className="w-full p-4 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] font-sans leading-relaxed focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                 />
               </div>
 
               {/* AI Re-draft instruction */}
-              <div className="p-4 rounded-xl bg-[#FAFBFD] border border-[#E5E7EB]">
-                <label className="block text-xs font-semibold text-[#0B1220] mb-2">
+              <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
+                <label className="block text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2">
                   💬 Natural Language Revision for AI Copywriter (Optional)
                 </label>
                 <div className="flex gap-2">
@@ -356,12 +368,12 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                     value={critique}
                     onChange={(e) => setCritique(e.target.value)}
                     placeholder="e.g. 'Make it punchier and mention our Docker PostgreSQL deployment'..."
-                    className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
+                    className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#111827] text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
                   />
                   <button
                     onClick={() => handleAction("REDRAFT")}
                     disabled={actionLoading || !critique.trim()}
-                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] disabled:opacity-50 transition-colors"
+                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] disabled:opacity-50 transition-colors"
                   >
                     {actionLoading ? "Rewriting..." : "✨ Re-draft"}
                   </button>
@@ -373,27 +385,27 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
 
         {/* Footer Actions */}
         {reviewLeads.length > 0 && (
-          <div className="px-6 py-4 border-t border-[#E5E7EB] bg-[#FAFBFD] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+          <div className="px-6 py-4 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-[#6B7280] dark:text-[#94A3B8]">
               <span>Hotkeys:</span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs">Enter</kbd> Approve
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">E</kbd> Edit
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">X</kbd> Reject
-              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">← / →</kbd> Browse
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] text-[10px] font-mono shadow-2xs">Enter</kbd> Approve
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] text-[10px] font-mono shadow-2xs ml-1">E</kbd> Edit
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] text-[10px] font-mono shadow-2xs ml-1">X</kbd> Reject
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] text-[10px] font-mono shadow-2xs ml-1">← / →</kbd> Browse
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handleAction("REJECT")}
                 disabled={actionLoading}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors disabled:opacity-50"
               >
                 Reject (X)
               </button>
               <button
                 onClick={() => handleAction("APPROVE")}
                 disabled={actionLoading}
-                className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+                className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {actionLoading ? "Dispatching..." : "Approve & Dispatch (↵)"}
               </button>

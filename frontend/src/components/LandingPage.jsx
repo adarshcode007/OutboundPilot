@@ -9,7 +9,7 @@ import Footer from './Footer';
 
 export default function LandingPage({ onNavigate, onSelectPreset }) {
   return (
-    <div className="min-h-screen bg-white text-[#1F2937] selection:bg-[#3B6BF0]/15 selection:text-[#0B1220]">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F17] text-[#1F2937] dark:text-[#CBD5E1] selection:bg-[#3B6BF0]/20 selection:text-[#0B1220] dark:selection:text-[#F8FAFC] transition-colors">
       <Navbar onNavigate={onNavigate} />
       <main>
         <Hero onNavigate={onNavigate} />

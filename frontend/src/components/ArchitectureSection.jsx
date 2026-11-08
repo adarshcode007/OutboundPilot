@@ -48,17 +48,17 @@ const AGENTS = [
 
 export default function ArchitectureSection() {
   return (
-    <section id="architecture" className="py-20 md:py-28 border-t border-[#E5E7EB] bg-[#FAFBFD]">
+    <section id="architecture" className="py-20 md:py-28 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0B0F17] transition-colors">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-16">
           <div className="text-xs font-semibold tracking-wider uppercase text-[#3B6BF0] mb-2">
             The Multi-Agent Pipeline
           </div>
-          <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#0B1220] tracking-tight leading-tight mb-4">
+          <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight leading-tight mb-4">
             Context-isolated specialist swarm.
           </h2>
-          <p className="text-base md:text-lg text-[#6B7280] leading-relaxed">
+          <p className="text-base md:text-lg text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
             A cyclic LangGraph state machine orchestrating 6 dedicated agents with checkpointed interruption gates and zero monolithic prompts.
           </p>
         </div>
@@ -68,31 +68,31 @@ export default function ArchitectureSection() {
           {AGENTS.map((agent) => (
             <div
               key={agent.step}
-              className={`bg-white rounded-2xl p-6 border transition-all hover:shadow-xs flex flex-col justify-between ${
+              className={`rounded-2xl p-6 border transition-all hover:shadow-xs flex flex-col justify-between ${
                 agent.highlight
-                  ? "border-[#3B6BF0]/50 ring-1 ring-[#3B6BF0]/20"
-                  : "border-[#E5E7EB] hover:border-gray-300"
+                  ? "bg-white dark:bg-[#111827] border-[#3B6BF0]/50 ring-1 ring-[#3B6BF0]/20"
+                  : "bg-white dark:bg-[#111827] border-[#E5E7EB] dark:border-[#1E293B] hover:border-gray-300 dark:hover:border-gray-700"
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#F5F5FA] border border-[#E5E7EB] flex items-center justify-center text-lg">
+                  <div className="w-10 h-10 rounded-lg bg-[#F5F5FA] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-center text-lg">
                     {agent.icon}
                   </div>
-                  <span className="text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]">
+                  <span className="text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]">
                     {agent.step}
                   </span>
                 </div>
 
-                <h3 className="font-sans text-lg font-semibold text-[#0B1220] mb-2">
+                <h3 className="font-sans text-lg font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2">
                   {agent.name}
                 </h3>
-                <p className="text-sm text-[#4B5563] leading-relaxed mb-6">
+                <p className="text-sm text-[#4B5563] dark:text-[#94A3B8] leading-relaxed mb-6">
                   {agent.desc}
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-[#E5E7EB] text-xs font-mono text-[#6B7280]">
+              <div className="pt-4 border-t border-[#E5E7EB] dark:border-[#1E293B] text-xs font-mono text-[#6B7280] dark:text-[#94A3B8]">
                 {agent.spec}
               </div>
             </div>

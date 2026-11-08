@@ -25,17 +25,17 @@ const GUARANTEES = [
 
 export default function SecuritySection() {
   return (
-    <section id="security" className="py-20 md:py-28 bg-[#FAFBFD] border-t border-[#E5E7EB]">
+    <section id="security" className="py-20 md:py-28 bg-[#FAFBFD] dark:bg-[#0B0F17] border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-16">
           <div className="text-xs font-semibold tracking-wider uppercase text-[#3B6BF0] mb-2">
             Enterprise Reliability
           </div>
-          <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#0B1220] tracking-tight leading-tight mb-4">
+          <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight leading-tight mb-4">
             Zero hallucinations. Total governance.
           </h2>
-          <p className="text-base md:text-lg text-[#6B7280] leading-relaxed">
+          <p className="text-base md:text-lg text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
             Engineered from first principles for mission-critical B2B pipelines where accuracy, durability, and domain reputation cannot be compromised.
           </p>
         </div>
@@ -45,15 +45,15 @@ export default function SecuritySection() {
           {GUARANTEES.map((item, idx) => (
             <div
               key={idx}
-              className="bg-white border border-[#E5E7EB] rounded-2xl p-8 hover:border-gray-300 transition-all hover:shadow-xs"
+              className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-8 hover:border-gray-300 dark:hover:border-gray-700 transition-all hover:shadow-xs"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#F5F5FA] border border-[#E5E7EB] flex items-center justify-center text-xl mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[#F5F5FA] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-center text-xl mb-5">
                 {item.icon}
               </div>
-              <h3 className="font-serif text-2xl text-[#0B1220] mb-3 tracking-tight">
+              <h3 className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] mb-3 tracking-tight">
                 {item.title}
               </h3>
-              <p className="text-sm md:text-base text-[#4B5563] leading-relaxed">
+              <p className="text-sm md:text-base text-[#4B5563] dark:text-[#94A3B8] leading-relaxed">
                 {item.desc}
               </p>
             </div>

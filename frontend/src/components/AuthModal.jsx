@@ -53,25 +53,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0B1220]/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-opacity">
-      <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-xl w-full max-w-md overflow-hidden transition-all">
+    <div className="fixed inset-0 bg-[#0B1220]/60 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-opacity">
+      <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl shadow-xl w-full max-w-md overflow-hidden transition-all">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#E5E7EB] flex justify-between items-start">
+        <div className="px-6 pt-6 pb-4 border-b border-[#E5E7EB] dark:border-[#1E293B] flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">🔐</span>
-              <h3 className="font-serif text-2xl font-normal text-[#0B1220] tracking-tight">
+              <h3 className="font-serif text-2xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                 {isRegister ? "Create SDR Account" : "Sign In to SDR Workforce"}
               </h3>
             </div>
-            <p className="text-xs text-[#6B7280]">
+            <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
               Protected with JWT in secure httpOnly cookies
             </p>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="text-[#9CA3AF] hover:text-[#0B1220] p-1 rounded-md text-lg leading-none transition-colors"
+              className="text-[#9CA3AF] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] p-1 rounded-md text-lg leading-none transition-colors"
             >
               ×
             </button>
@@ -84,8 +84,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             type="button"
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
               !isRegister
-                ? "bg-[#0B1220] text-white"
-                : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+                ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220]"
+                : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
             }`}
             onClick={() => { setIsRegister(false); setError(null); }}
           >
@@ -95,8 +95,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             type="button"
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
               isRegister
-                ? "bg-[#0B1220] text-white"
-                : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+                ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220]"
+                : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
             }`}
             onClick={() => { setIsRegister(true); setError(null); }}
           >
@@ -107,14 +107,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs">
+            <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs">
               {error}
             </div>
           )}
 
           {isRegister && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
                 Full Name
               </label>
               <input
@@ -123,13 +123,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                 onChange={e => setFullName(e.target.value)}
                 placeholder="e.g. Sarah Connor"
                 required
-                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
               Work Email
             </label>
             <input
@@ -138,12 +138,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               onChange={e => setEmail(e.target.value)}
               placeholder="e.g. alex@company.com"
               required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
               Password
             </label>
             <input
@@ -152,20 +152,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#0B1220] hover:bg-[#1E293B] text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Authenticating..." : isRegister ? "Create Account & Continue" : "Sign In to Workspace"}
           </button>
 
           {/* Quick Demo Credentials shortcut */}
-          <div className="pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-xs text-[#6B7280]">
+          <div className="pt-3 border-t border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between text-xs text-[#6B7280] dark:text-[#94A3B8]">
             <span>Need seed demo login?</span>
             <button
               type="button"

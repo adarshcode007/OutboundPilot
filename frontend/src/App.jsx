@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import CommandCenter from './components/CommandCenter';
+import { ThemeProvider } from './context/ThemeContext';
 
-export default function App() {
+function MainApp() {
   const [currentView, setCurrentView] = useState(() => {
     return window.location.hash === "#app" ? "workspace" : "landing";
   });
@@ -43,5 +44,13 @@ export default function App() {
       onNavigate={navigateTo} 
       onSelectPreset={handleSelectPreset} 
     />
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <MainApp />
+    </ThemeProvider>
   );
 }

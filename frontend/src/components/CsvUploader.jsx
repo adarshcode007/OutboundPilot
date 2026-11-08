@@ -96,15 +96,15 @@ export default function CsvUploader({ onUploadSuccess }) {
   };
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 mb-6 shadow-xs">
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB]">
+    <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 mb-6 shadow-xs transition-colors">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">📁</span>
-          <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+          <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
             Batch CSV Ingestion &amp; Auto-Mapper
           </h3>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] text-[#3B6BF0] border border-[#E5E7EB]">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
           <span>⚡</span>
           <span>0 LLM Tokens (Regex Scored)</span>
         </span>
@@ -117,8 +117,8 @@ export default function CsvUploader({ onUploadSuccess }) {
         onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
           isDragging
-            ? "border-[#3B6BF0] bg-[#3B6BF0]/5"
-            : "border-[#E5E7EB] bg-[#FAFBFD] hover:bg-[#F5F5FA] hover:border-gray-300"
+            ? "border-[#3B6BF0] bg-[#3B6BF0]/5 dark:bg-[#3B6BF0]/10"
+            : "border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0B0F17] hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] hover:border-gray-300 dark:hover:border-gray-700"
         }`}
       >
         <input
@@ -129,16 +129,16 @@ export default function CsvUploader({ onUploadSuccess }) {
           onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
         />
         <div className="text-3xl mb-2">📄</div>
-        <div className="text-sm font-semibold text-[#0B1220]">
+        <div className="text-sm font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
           {uploading ? "Extracting & Prioritizing Leads..." : "Click or drag & drop target CSV file here"}
         </div>
-        <div className="text-xs text-[#6B7280] mt-1">
+        <div className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
           Auto-detects: Company, Target Role, Contact Name, Email
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs">
+        <div className="mt-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs">
           {error}
         </div>
       )}
