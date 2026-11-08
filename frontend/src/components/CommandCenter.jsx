@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PRESETS } from '../data/presets';
-import { apiFetch, setOnUnauthorized, API_URL } from '../apiClient';
+import { apiFetch, setOnUnauthorized } from '../apiClient';
 
 import CsvUploader from './CsvUploader';
 import LeadTable from './LeadTable';
@@ -269,46 +269,46 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   };
 
   return (
-    <div className="workspace-app">
+    <div className="min-h-screen bg-[#FAFBFD] text-[#1F2937] flex flex-col font-sans">
       {/* Top Navbar */}
-      <header className="workspace-navbar">
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <button
-            className="btn btn-secondary"
-            style={{ fontSize: "0.82rem", padding: "6px 12px" }}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] transition-colors"
             onClick={() => onNavigate("landing")}
           >
             ← Product Overview
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "1.2rem" }}>⚡</span>
-            <span style={{ fontWeight: 800, fontSize: "1rem", color: "#ffffff" }}>SDR Command Center</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <span className="font-serif text-lg font-normal text-[#0B1220] tracking-tight">
+              SDR Command Center
+            </span>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div className="pill">
-            <div className="pill-dot"></div>
-            FastAPI: Port 8000
+        <div className="flex items-center gap-2.5">
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            FastAPI 8000
           </div>
-          <div className="pill">
-            <span style={{ color: "#38bdf8" }}>🐘</span>
-            PostgreSQL: Scoped
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]">
+            <span>🐘</span>
+            PostgreSQL Scoped
           </div>
 
           {/* User Profile Pill / Auth Actions */}
           {currentUser ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "6px" }}>
-              <div className="pill" style={{ background: "rgba(99, 102, 241, 0.15)", border: "1px solid var(--border-accent)" }}>
-                <span style={{ fontSize: "0.85rem" }}>👤</span>
-                <span style={{ fontWeight: 700, color: "#e2e8f0" }}>{currentUser.full_name || currentUser.email}</span>
-                <span style={{ fontSize: "0.7rem", color: "#a5b4fc", marginLeft: "4px" }}>
-                  ({quotaStats.remaining_today}/{quotaStats.daily_limit} quota)
+            <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB]">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white text-[#0B1220] border border-[#E5E7EB]">
+                <span>👤</span>
+                <span className="font-semibold">{currentUser.full_name || currentUser.email}</span>
+                <span className="text-[#3B6BF0] ml-1 font-mono text-[11px]">
+                  ({quotaStats.remaining_today}/{quotaStats.daily_limit} slots)
                 </span>
               </div>
               <button
-                className="btn btn-secondary"
-                style={{ fontSize: "0.75rem", padding: "4px 10px" }}
+                className="text-xs font-medium px-2.5 py-1 rounded-lg text-[#6B7280] hover:text-[#0B1220] hover:bg-[#F5F5FA] transition-colors"
                 onClick={handleLogout}
               >
                 Log Out
@@ -316,149 +316,192 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             </div>
           ) : (
             <button
-              className="btn btn-primary"
-              style={{ fontSize: "0.78rem", padding: "5px 12px", marginLeft: "6px" }}
+              className="bg-[#0B1220] hover:bg-[#1E293B] text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all shadow-xs"
               onClick={() => setShowAuthModal(true)}
             >
-              🔐 Sign In
+              Sign In
             </button>
           )}
         </div>
       </header>
 
-      <div className="workspace-body">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
-        <aside className="workspace-sidebar">
+        <aside className="w-80 shrink-0 border-r border-[#E5E7EB] bg-white p-6 space-y-8 hidden lg:block overflow-y-auto">
           <div>
-            <div className="sidebar-heading">Preset Target Accounts</div>
-            {PRESETS.map((p, i) => (
-              <div
-                key={i}
-                className="preset-item"
-                onClick={() => selectPreset(p)}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 700, fontSize: "0.88rem" }}>{p.company}</span>
-                  <span className={`tag ${p.tagType}`} style={{ fontSize: "0.65rem", padding: "2px 6px" }}>{p.tag}</span>
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-3">
+              Preset Target Accounts
+            </div>
+            <div className="space-y-2">
+              {PRESETS.map((p, i) => (
+                <div
+                  key={i}
+                  className="p-3 rounded-xl border border-[#E5E7EB] bg-[#FAFBFD] hover:bg-[#F5F5FA] hover:border-gray-300 transition-all cursor-pointer"
+                  onClick={() => selectPreset(p)}
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-semibold text-xs text-[#0B1220]">{p.company}</span>
+                    <span
+                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                        p.tagType === 'tag-danger'
+                          ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                          : p.tagType === 'tag-warning'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                    >
+                      {p.tag}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#6B7280] line-clamp-2">
+                    {p.role} • {p.desc}
+                  </div>
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "4px" }}>
-                  {p.role} • {p.desc}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <div>
-            <div className="sidebar-heading">PostgreSQL Checkpoints ({campaignHistory.length})</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-3">
+              PostgreSQL Checkpoints ({campaignHistory.length})
+            </div>
             {campaignHistory.length === 0 ? (
-              <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
-                No campaigns in database yet. Launch one above!
+              <div className="text-xs text-[#6B7280]">
+                No campaigns stored in database yet.
               </div>
             ) : (
-              campaignHistory.slice(0, 10).map((c, i) => (
-                <div
-                  key={i}
-                  className="preset-item"
-                  style={{ padding: "8px 12px" }}
-                  onClick={() => setThreadId(c.thread_id)}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontFamily: "JetBrains Mono", fontSize: "0.75rem", color: "#a5b4fc" }}>
+              <div className="space-y-1.5">
+                {campaignHistory.slice(0, 10).map((c, i) => (
+                  <div
+                    key={i}
+                    className="p-2.5 rounded-lg border border-[#E5E7EB] hover:bg-[#F5F5FA] transition-colors cursor-pointer flex justify-between items-center text-xs"
+                    onClick={() => setThreadId(c.thread_id)}
+                  >
+                    <span className="font-mono text-[11px] text-[#3B6BF0] truncate max-w-[170px]">
                       {c.thread_id}
                     </span>
-                    <span className="pill" style={{ fontSize: "0.65rem", padding: "2px 6px" }}>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]">
                       {c.total_steps} steps
                     </span>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </aside>
 
         {/* Main Interactive Workspace Canvas */}
-        <main className="workspace-main">
+        <main className="flex-1 p-6 md:p-8 space-y-6 max-w-5xl overflow-y-auto">
           {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue vs Analytics */}
-          <div style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", marginBottom: "0.5rem" }}>
+          <div className="flex gap-2 border-b border-[#E5E7EB] pb-3">
             <button
-              className={`btn ${activeTab === 'single' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'single'
+                  ? "bg-[#0B1220] text-white shadow-xs"
+                  : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+              }`}
               onClick={() => setActiveTab("single")}
             >
               🎯 Single Lead Ingestion
             </button>
             <button
-              className={`btn ${activeTab === 'batch' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'batch'
+                  ? "bg-[#0B1220] text-white shadow-xs"
+                  : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+              }`}
               onClick={() => { setActiveTab("batch"); fetchLeads(); }}
             >
-              📁 Batch CSV & Lead Queue ({queueLeads.length})
+              📁 Batch CSV &amp; Lead Queue ({queueLeads.length})
             </button>
             <button
-              className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: "0.85rem", padding: "8px 16px" }}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'analytics'
+                  ? "bg-[#0B1220] text-white shadow-xs"
+                  : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+              }`}
               onClick={() => setActiveTab("analytics")}
             >
-              📊 ROI & Intelligence
+              📊 ROI &amp; Intelligence
             </button>
           </div>
 
           {activeTab === "single" && (
             /* Target Account Ingestion Form */
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">
-                  <span>🎯</span> Target Account Ingestion
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#E5E7EB]">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎯</span>
+                  <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+                    Target Account Ingestion
+                  </h3>
                 </div>
-                {loading && <span className="tag tag-warning pulse-anim">Swarm Active</span>}
+                {loading && (
+                  <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                    Swarm Active
+                  </span>
+                )}
               </div>
 
-              <form onSubmit={handleStart} className="form-grid">
-                <div className="form-group">
-                  <label>Company Domain / Name</label>
-                  <input
-                    value={company}
-                    onChange={e => setCompany(e.target.value)}
-                    required
-                    placeholder="e.g. Stripe, OpenAI, Datadog"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Target Executive Role</label>
-                  <input
-                    value={role}
-                    onChange={e => setRole(e.target.value)}
-                    required
-                    placeholder="e.g. VP of Engineering"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Contact Name</label>
-                  <input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    required
-                    placeholder="e.g. David"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Contact Email</label>
-                  <input
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    placeholder="e.g. david@stripe.com"
-                  />
+              <form onSubmit={handleStart} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+                      Company Domain / Name
+                    </label>
+                    <input
+                      value={company}
+                      onChange={e => setCompany(e.target.value)}
+                      required
+                      placeholder="e.g. Stripe, OpenAI, Datadog"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+                      Target Executive Role
+                    </label>
+                    <input
+                      value={role}
+                      onChange={e => setRole(e.target.value)}
+                      required
+                      placeholder="e.g. VP of Engineering"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+                      Contact Name
+                    </label>
+                    <input
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      required
+                      placeholder="e.g. David"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+                      Contact Email
+                    </label>
+                    <input
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      placeholder="e.g. david@stripe.com"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                    />
+                  </div>
                 </div>
 
-                <div style={{ gridColumn: "span 2", marginTop: "0.5rem" }}>
+                <div className="pt-2">
                   <button
                     type="submit"
-                    className="btn btn-primary"
-                    style={{ width: "100%", padding: "12px" }}
+                    className="w-full bg-[#0B1220] hover:bg-[#1E293B] text-white text-sm font-medium py-3 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] disabled:opacity-50"
                     disabled={loading}
                   >
-                    {loading ? "Multi-Agent Swarm Orchestrating..." : "🚀 Launch Autonomous SDR Swarm"}
+                    {loading ? "Multi-Agent Swarm Orchestrating..." : "Launch Autonomous SDR Swarm →"}
                   </button>
                 </div>
               </form>
@@ -486,58 +529,73 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
           {/* Campaign Lifecycle Stepper */}
           {activeTab === "single" && threadId && (
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">
-                  <span>🔄</span> Campaign Lifecycle: <span style={{ fontFamily: "JetBrains Mono", color: "var(--primary)" }}>{threadId}</span>
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB]">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔄</span>
+                  <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+                    Campaign Lifecycle: <span className="font-mono text-[#3B6BF0]">{threadId}</span>
+                  </h3>
                 </div>
                 {campaignState && (
-                  <span className={`tag ${campaignState.ui_status === 'AWAITING_HUMAN_REVIEW' ? 'tag-warning' :
-                    campaignState.ui_status === 'DISPATCHED' ? 'tag-success' :
-                      campaignState.ui_status === 'DISQUALIFIED' ? 'tag-danger' : 'tag-info'
-                    }`}>
+                  <span className={`text-[11px] font-semibold uppercase px-2.5 py-1 rounded-full ${
+                    campaignState.ui_status === 'AWAITING_HUMAN_REVIEW'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : campaignState.ui_status === 'DISPATCHED'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : campaignState.ui_status === 'DISQUALIFIED'
+                      ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                      : 'bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]'
+                  }`}>
                     {campaignState.ui_status}
                   </span>
                 )}
               </div>
 
-              <div className="stepper">
-                <div className={`step-item ${campaignState?.research_summary ? 'step-completed' : loading ? 'step-active' : ''}`}>
-                  <div className="step-circle">1</div>
-                  <div className="step-label">Researcher</div>
-                </div>
-                <div className={`step-item ${campaignState?.icp_fit_score ? 'step-completed' : ''}`}>
-                  <div className="step-circle">2</div>
-                  <div className="step-label">ICP Analyst</div>
-                </div>
-                <div className={`step-item ${campaignState?.email_draft ? 'step-completed' : ''}`}>
-                  <div className="step-circle">3</div>
-                  <div className="step-label">Copywriter</div>
-                </div>
-                <div className={`step-item ${campaignState?.eval_score ? 'step-completed' : ''}`}>
-                  <div className="step-circle">4</div>
-                  <div className="step-label">AI Judge</div>
-                </div>
-                <div className={`step-item ${campaignState?.is_paused_at_gate ? 'step-active' : campaignState?.approval_status === 'APPROVED' ? 'step-completed' : ''}`}>
-                  <div className="step-circle">5</div>
-                  <div className="step-label">HITL Review</div>
-                </div>
-                <div className={`step-item ${campaignState?.approval_status === 'APPROVED' ? 'step-completed' : ''}`}>
-                  <div className="step-circle">6</div>
-                  <div className="step-label">Dispatcher</div>
-                </div>
+              {/* Stepper Progress Indicator */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { step: 1, label: "Researcher", completed: !!campaignState?.research_summary, active: loading },
+                  { step: 2, label: "ICP Analyst", completed: !!campaignState?.icp_fit_score },
+                  { step: 3, label: "Copywriter", completed: !!campaignState?.email_draft },
+                  { step: 4, label: "AI Judge", completed: !!campaignState?.eval_score },
+                  { step: 5, label: "HITL Review", completed: campaignState?.approval_status === 'APPROVED', active: campaignState?.is_paused_at_gate },
+                  { step: 6, label: "Dispatcher", completed: campaignState?.approval_status === 'APPROVED' },
+                ].map(s => (
+                  <div
+                    key={s.step}
+                    className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                      s.completed
+                        ? "bg-emerald-50/60 border-emerald-200 text-emerald-800"
+                        : s.active
+                        ? "bg-[#3B6BF0]/10 border-[#3B6BF0] text-[#3B6BF0] ring-1 ring-[#3B6BF0]/30"
+                        : "bg-[#FAFBFD] border-[#E5E7EB] text-[#6B7280]"
+                    }`}
+                  >
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mb-1.5 ${
+                      s.completed
+                        ? "bg-emerald-600 text-white"
+                        : s.active
+                        ? "bg-[#3B6BF0] text-white"
+                        : "bg-[#F5F5FA] text-[#6B7280] border border-[#E5E7EB]"
+                    }`}>
+                      {s.completed ? "✓" : s.step}
+                    </div>
+                    <div className="text-xs font-medium">{s.label}</div>
+                  </div>
+                ))}
               </div>
 
               {/* Disqualified Notice */}
               {campaignState?.ui_status === "DISQUALIFIED" && (
-                <div style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)", padding: "16px", borderRadius: "8px", marginTop: "1rem" }}>
-                  <div style={{ fontWeight: 700, color: "#f87171", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-1.5">
+                  <div className="font-semibold text-rose-700 text-sm flex items-center gap-2">
                     🛑 Lead Disqualified ({campaignState.icp_fit_score}/10) — Pipeline Aborted Early
                   </div>
-                  <div style={{ fontSize: "0.85rem", marginTop: "6px", color: "#cbd5e1" }}>
+                  <div className="text-xs text-rose-900/80">
                     {campaignState.icp_rationale}
                   </div>
-                  <div style={{ fontSize: "0.75rem", marginTop: "8px", color: "var(--text-dim)" }}>
+                  <div className="text-[11px] text-rose-600 font-mono pt-1">
                     Token-Saver Guardrail: Stopped before copywriting to preserve sender reputation and token compute.
                   </div>
                 </div>
@@ -545,11 +603,11 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
               {/* Executive Brief */}
               {campaignState?.research_summary && (
-                <div style={{ marginTop: "1.5rem" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-medium)", marginBottom: "8px" }}>
-                    📊 Executive Intelligence Brief & ICP Qualification
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                    Executive Intelligence Brief &amp; ICP Qualification
                   </div>
-                  <div className="code-box">
+                  <div className="p-4 rounded-xl bg-[#FAFBFD] border border-[#E5E7EB] font-mono text-xs text-[#1F2937] leading-relaxed whitespace-pre-wrap">
                     {campaignState.research_summary}
                     {"\n\n"}
                     <strong>ICP Fit Score:</strong> {campaignState.icp_fit_score}/10{"\n"}
@@ -560,16 +618,18 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
               {/* AI Quality Judge Card */}
               {campaignState?.eval_score && (
-                <div style={{ marginTop: "1.2rem", background: "rgba(99, 102, 241, 0.08)", border: "1px solid var(--border-accent)", padding: "14px", borderRadius: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, color: "#a5b4fc", fontSize: "0.9rem" }}>
+                <div className="p-4 rounded-xl bg-[#F5F5FA] border border-[#E5E7EB] flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold text-[#0B1220]">
                       🛡️ AI Quality Judge: {campaignState.eval_score}/10 [{campaignState.eval_verdict}]
-                    </span>
-                    <span className="tag tag-success">Pre-Screened</span>
+                    </div>
+                    <div className="text-[11px] text-[#6B7280] mt-0.5">
+                      Feedback: {campaignState.eval_critique}
+                    </div>
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Feedback: {campaignState.eval_critique}
-                  </div>
+                  <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Pre-Screened
+                  </span>
                 </div>
               )}
             </div>
@@ -577,36 +637,41 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
           {/* Human-in-the-Loop Review Area */}
           {activeTab === "single" && campaignState?.is_paused_at_gate && (
-            <div className="card" style={{ borderColor: "var(--warning)", boxShadow: "0 0 30px rgba(245, 158, 11, 0.15)" }}>
-              <div className="card-header">
+            <div className="bg-white border-2 border-amber-300 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="flex items-start justify-between pb-4 border-b border-[#E5E7EB]">
                 <div>
-                  <div className="card-title" style={{ color: "#fbbf24" }}>
-                    <span>⏸️</span> Human-in-the-Loop Gate: Review & Sign-Off Required
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⏸️</span>
+                    <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+                      Human-in-the-Loop Gate: Review &amp; Sign-Off Required
+                    </h3>
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
                     Target Recipient: {campaignState.target_contact_name} ({campaignState.target_contact_email})
-                  </div>
+                  </p>
                 </div>
-                <span className="tag tag-warning">Execution Paused</span>
+                <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Execution Paused
+                </span>
               </div>
 
               {statusNotice && (
-                <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid var(--success)", padding: "10px 14px", borderRadius: "6px", fontSize: "0.85rem", color: "#34d399", marginBottom: "1rem" }}>
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
                   {statusNotice}
                 </div>
               )}
 
               {/* 3-Touch Cadence Generator for Single Lead */}
-              <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "12px 14px", marginBottom: "1.2rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: cadence ? "10px" : "0px" }}>
-                  <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#a5b4fc", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span>📅</span> Multi-Touch Outbound Cadence (3 Steps):
+              <div className="p-4 rounded-xl bg-[#FAFBFD] border border-[#E5E7EB]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>Multi-Touch Outbound Cadence (3 Steps):</span>
                   </div>
                   {!cadence && (
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      style={{ fontSize: "0.78rem", padding: "4px 12px" }}
+                      className="text-xs text-[#3B6BF0] hover:underline font-medium"
                       onClick={handleGenerateCadence}
                       disabled={cadenceLoading || !campaignState?.lead_id}
                     >
@@ -616,10 +681,10 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 </div>
 
                 {cadence && (
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <div className="flex gap-2 flex-wrap">
                     {[
-                      { step: 1, label: "Touch 1 (Day 1: The Hook)", data: cadence.touch_1 },
-                      { step: 2, label: "Touch 2 (Day 3: Value Bump)", data: cadence.touch_2 },
+                      { step: 1, label: "Touch 1 (Day 1: Hook)", data: cadence.touch_1 },
+                      { step: 2, label: "Touch 2 (Day 3: Bump)", data: cadence.touch_2 },
                       { step: 3, label: "Touch 3 (Day 7: Breakup)", data: cadence.touch_3 },
                     ].map(t => (
                       <button
@@ -629,17 +694,11 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                           setActiveTouchStep(t.step);
                           if (t.data?.body) setEditableDraft(t.data.body);
                         }}
-                        style={{
-                          background: activeTouchStep === t.step ? "var(--primary)" : "#131b2e",
-                          color: activeTouchStep === t.step ? "#ffffff" : "var(--text-muted)",
-                          border: activeTouchStep === t.step ? "1px solid var(--primary-light)" : "1px solid var(--border-subtle)",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          fontSize: "0.78rem",
-                          cursor: "pointer",
-                          fontWeight: activeTouchStep === t.step ? 700 : 500,
-                          transition: "all 0.15s ease",
-                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          activeTouchStep === t.step
+                            ? "bg-[#0B1220] text-white"
+                            : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+                        }`}
                       >
                         {t.label}
                       </button>
@@ -648,27 +707,33 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 )}
               </div>
 
-              <div className="form-group" style={{ marginBottom: "1.2rem" }}>
-                <label>Executive Outreach Proposal (Editable Before Sending)</label>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+                  Executive Outreach Proposal (Editable Before Sending)
+                </label>
                 <textarea
                   value={editableDraft}
                   onChange={e => setEditableDraft(e.target.value)}
                   rows={6}
+                  className="w-full p-4 rounded-xl border border-[#E5E7EB] bg-white text-sm text-[#0B1220] font-sans leading-relaxed focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                 />
               </div>
 
               {/* AI Re-draft critique input */}
-              <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", padding: "14px", borderRadius: "8px", marginBottom: "1.2rem" }}>
-                <label style={{ color: "#a5b4fc" }}>💬 Natural Language Feedback for AI Copywriter (Optional)</label>
-                <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
+              <div className="p-4 rounded-xl bg-[#FAFBFD] border border-[#E5E7EB]">
+                <label className="block text-xs font-semibold text-[#0B1220] mb-2">
+                  💬 Natural Language Feedback for AI Copywriter (Optional)
+                </label>
+                <div className="flex gap-2">
                   <input
                     value={critique}
                     onChange={e => setCritique(e.target.value)}
                     placeholder="e.g. 'Shorten to under 50 words and emphasize security compliance'"
+                    className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
                   />
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] transition-colors disabled:opacity-50"
                     onClick={() => handleAction("REDRAFT")}
                     disabled={actionLoading || !critique.trim()}
                   >
@@ -678,16 +743,16 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               </div>
 
               {/* Action Controls */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <div className="flex justify-end gap-3 pt-2">
                 <button
-                  className="btn btn-danger"
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors disabled:opacity-50"
                   onClick={() => handleAction("REJECT")}
                   disabled={actionLoading}
                 >
                   🛑 Reject Lead
                 </button>
                 <button
-                  className="btn btn-success"
+                  className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
                   onClick={() => handleAction("APPROVE")}
                   disabled={actionLoading}
                 >
@@ -699,14 +764,16 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
           {/* Final Dispatch Confirmation */}
           {activeTab === "single" && campaignState?.approval_status === "APPROVED" && (
-            <div className="card" style={{ borderColor: "var(--success)" }}>
-              <div className="card-header">
-                <div className="card-title" style={{ color: "#34d399" }}>
+            <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-emerald-800 text-sm flex items-center gap-2">
                   <span>🚀</span> Outbound Campaign Dispatched Successfully
                 </div>
-                <span className="tag tag-success">Delivered (200 OK)</span>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Delivered (200 OK)
+                </span>
               </div>
-              <div className="code-box">
+              <div className="font-mono text-xs text-emerald-900 leading-relaxed">
                 Delivery confirmed to: {campaignState.target_contact_email}{"\n"}
                 State Checkpoint: Stored permanently in Docker PostgreSQL!
               </div>

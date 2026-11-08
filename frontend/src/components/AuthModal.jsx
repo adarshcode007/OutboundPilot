@@ -53,196 +53,130 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: "rgba(3, 7, 18, 0.85)",
-      backdropFilter: "blur(8px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 9999,
-      padding: "20px",
-    }}>
-      <div style={{
-        background: "#0b0f19",
-        border: "1px solid var(--border-accent, #3730a3)",
-        borderRadius: "14px",
-        width: "100%",
-        maxWidth: "440px",
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(99, 102, 241, 0.2)",
-        overflow: "hidden",
-      }}>
+    <div className="fixed inset-0 bg-[#0B1220]/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-opacity">
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-xl w-full max-w-md overflow-hidden transition-all">
         {/* Header */}
-        <div style={{
-          padding: "24px 24px 16px 24px",
-          borderBottom: "1px solid var(--border-subtle, #1e293b)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "1.4rem" }}>🔐</span>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: "1.1rem", color: "#f8fafc" }}>
+        <div className="px-6 pt-6 pb-4 border-b border-[#E5E7EB] flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🔐</span>
+              <h3 className="font-serif text-2xl font-normal text-[#0B1220] tracking-tight">
                 {isRegister ? "Create SDR Account" : "Sign In to SDR Workforce"}
-              </div>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
-                Protected with JWT in secure httpOnly cookies
-              </div>
+              </h3>
             </div>
+            <p className="text-xs text-[#6B7280]">
+              Protected with JWT in secure httpOnly cookies
+            </p>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#64748b",
-                fontSize: "1.2rem",
-                cursor: "pointer",
-              }}
+              className="text-[#9CA3AF] hover:text-[#0B1220] p-1 rounded-md text-lg leading-none transition-colors"
             >
-              ✕
+              ×
             </button>
           )}
         </div>
 
-        {/* Error Notice */}
-        {error && (
-          <div style={{
-            margin: "16px 24px 0 24px",
-            padding: "10px 14px",
-            background: "rgba(239, 68, 68, 0.15)",
-            border: "1px solid rgba(239, 68, 68, 0.4)",
-            borderRadius: "6px",
-            fontSize: "0.82rem",
-            color: "#f87171",
-          }}>
-            ⚠️ {error}
-          </div>
-        )}
-
-        {/* Quick Demo Login Pill */}
-        <div style={{
-          margin: "16px 24px 0 24px",
-          padding: "12px 14px",
-          background: "rgba(99, 102, 241, 0.08)",
-          border: "1px dashed var(--border-accent, #4f46e5)",
-          borderRadius: "8px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
-          <div>
-            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#a5b4fc" }}>
-              ⚡ Quick Demo Account:
-            </div>
-            <div style={{ fontSize: "0.72rem", color: "var(--text-dim, #94a3b8)", fontFamily: "JetBrains Mono, monospace" }}>
-              admin@outboundsdr.ai
-            </div>
-          </div>
+        {/* Mode Switcher Tabs */}
+        <div className="px-6 pt-4 flex gap-2">
           <button
             type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: "0.72rem", padding: "4px 10px" }}
-            onClick={handleQuickAdminLogin}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+              !isRegister
+                ? "bg-[#0B1220] text-white"
+                : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+            }`}
+            onClick={() => { setIsRegister(false); setError(null); }}
           >
-            Auto-Fill
+            Sign In
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+              isRegister
+                ? "bg-[#0B1220] text-white"
+                : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+            }`}
+            onClick={() => { setIsRegister(true); setError(null); }}
+          >
+            Create Account
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "20px 24px 24px 24px" }}>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs">
+              {error}
+            </div>
+          )}
+
           {isRegister && (
-            <div className="form-group" style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-medium, #cbd5e1)", display: "block", marginBottom: "6px" }}>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
                 Full Name
               </label>
               <input
                 type="text"
-                className="input-field"
-                placeholder="e.g. Sarah Connor"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required={isRegister}
-                style={{ width: "100%", padding: "8px 12px", fontSize: "0.85rem" }}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="e.g. Sarah Connor"
+                required
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
               />
             </div>
           )}
 
-          <div className="form-group" style={{ marginBottom: "14px" }}>
-            <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-medium, #cbd5e1)", display: "block", marginBottom: "6px" }}>
-              Email Address
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
+              Work Email
             </label>
             <input
               type="email"
-              className="input-field"
-              placeholder="e.g. sdr@company.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="e.g. alex@company.com"
               required
-              style={{ width: "100%", padding: "8px 12px", fontSize: "0.85rem" }}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: "20px" }}>
-            <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-medium, #cbd5e1)", display: "block", marginBottom: "6px" }}>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1.5">
               Password
             </label>
             <input
               type="password"
-              className="input-field"
-              placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
-              minLength={6}
-              style={{ width: "100%", padding: "8px 12px", fontSize: "0.85rem" }}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-sm text-[#0B1220] placeholder:text-gray-400 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
             />
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: "100%", padding: "10px", fontSize: "0.9rem", fontWeight: 700 }}
             disabled={loading}
+            className="w-full bg-[#0B1220] hover:bg-[#1E293B] text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Authenticating..." : (isRegister ? "Create Account & Sign In" : "Sign In →")}
+            {loading ? "Authenticating..." : isRegister ? "Create Account & Continue" : "Sign In to Workspace"}
           </button>
 
-          {/* Toggle Register/Login */}
-          <div style={{ marginTop: "16px", textAlign: "center", fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)" }}>
-            {isRegister ? (
-              <span>
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => { setIsRegister(false); setError(null); }}
-                  style={{ background: "none", border: "none", color: "#818cf8", fontWeight: 600, cursor: "pointer", padding: 0 }}
-                >
-                  Sign In
-                </button>
-              </span>
-            ) : (
-              <span>
-                Need an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => { setIsRegister(true); setError(null); }}
-                  style={{ background: "none", border: "none", color: "#818cf8", fontWeight: 600, cursor: "pointer", padding: 0 }}
-                >
-                  Create one now
-                </button>
-              </span>
-            )}
+          {/* Quick Demo Credentials shortcut */}
+          <div className="pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-xs text-[#6B7280]">
+            <span>Need seed demo login?</span>
+            <button
+              type="button"
+              onClick={handleQuickAdminLogin}
+              className="text-[#3B6BF0] hover:underline font-medium"
+            >
+              Fill Demo Admin
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
-

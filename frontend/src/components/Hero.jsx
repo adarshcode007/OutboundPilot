@@ -2,52 +2,77 @@ import React from 'react';
 
 export default function Hero({ onNavigate }) {
   return (
-    <section className="hero-section">
-      <div className="hero-eyebrow">
-        <span>🛡️</span>
-        <span>LangGraph + Groq + PostgreSQL • Human-in-the-Loop Governance</span>
+    <section className="pt-16 pb-20 md:pt-24 md:pb-28 max-w-5xl mx-auto px-6 text-center">
+      {/* Eyebrow badge */}
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F5F5FA] border border-[#E5E7EB] text-xs font-semibold tracking-wide uppercase text-[#6B7280] mb-8">
+        <span className="text-[#3B6BF0]">✦</span>
+        <span>LangGraph &amp; PostgreSQL • Human-in-the-Loop Governance</span>
       </div>
 
-      <h1 className="hero-heading">
-        High-Precision Outbound SDR Teams. <br />
-        <span className="gradient-text">Orchestrated with Autonomous AI.</span>
+      {/* Main Serif Display H1 */}
+      <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-normal text-[#0B1220] tracking-tight leading-[1.08] mb-6">
+        High-precision outbound SDR teams. <br className="hidden sm:inline" />
+        <span className="italic text-[#3B6BF0]">Orchestrated by autonomous AI.</span>
       </h1>
 
-      <p className="hero-subhead">
+      {/* Hero Subhead */}
+      <p className="font-sans text-lg md:text-xl text-[#4B5563] max-w-2xl mx-auto font-normal leading-relaxed mb-10">
         Replace generic cold spam with context-isolated AI agents. Real-time web reconnaissance, deterministic ICP qualification, factually grounded copywriting, and unbreakable human review gates.
       </p>
 
-      <div className="hero-cta-group">
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-16">
         <button 
-          className="btn btn-primary btn-lg"
+          className="w-full sm:w-auto bg-[#0B1220] hover:bg-[#1E293B] text-white font-medium text-base px-6 py-3 rounded-lg transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-2"
           onClick={() => onNavigate("workspace")}
         >
-          🚀 Try It Live — Launch Workspace
+          <span>Launch Workspace</span>
+          <span className="text-gray-400">→</span>
         </button>
         <a 
-          className="btn btn-secondary btn-lg"
           href="#architecture"
+          className="w-full sm:w-auto bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] font-medium text-base px-6 py-3 rounded-lg transition-all border border-[#E5E7EB] flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           Inspect Swarm Architecture
         </a>
       </div>
 
-      {/* Hero Proof Metrics */}
-      <div className="hero-stats-row">
-        <div className="stat-card">
-          <div className="stat-number">98.4%</div>
-          <div className="stat-label">Factual Grounding Score</div>
-          <div className="stat-subtext">Actor-Critic LLM judge guarantees zero hallucinated claims.</div>
+      {/* Stat Cards - Editorial 3-Column Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left pt-6 border-t border-[#E5E7EB]">
+        <div className="bg-[#F5F5FA] border border-[#E5E7EB] rounded-2xl p-6 transition-all hover:border-gray-300">
+          <div className="font-serif text-3xl md:text-4xl text-[#0B1220] tracking-tight mb-1">
+            98.4%
+          </div>
+          <div className="text-sm font-semibold text-[#0B1220] mb-1">
+            Factual Grounding Score
+          </div>
+          <div className="text-xs text-[#6B7280] leading-relaxed">
+            Actor-Critic LLM judge cross-examines research notes to guarantee zero hallucinated claims.
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-number">&lt; 120 Words</div>
-          <div className="stat-label">High-Deliverability Pitch</div>
-          <div className="stat-subtext">Zero buzzword spam, optimized for primary inbox delivery.</div>
+
+        <div className="bg-[#F5F5FA] border border-[#E5E7EB] rounded-2xl p-6 transition-all hover:border-gray-300">
+          <div className="font-serif text-3xl md:text-4xl text-[#0B1220] tracking-tight mb-1">
+            &lt; 120 Words
+          </div>
+          <div className="text-sm font-semibold text-[#0B1220] mb-1">
+            High-Deliverability Pitch
+          </div>
+          <div className="text-xs text-[#6B7280] leading-relaxed">
+            Concise, single-CTA copy engineered specifically for primary inbox delivery.
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-number">100%</div>
-          <div className="stat-label">Audit Durability</div>
-          <div className="stat-subtext">Every state transition persisted in Docker PostgreSQL.</div>
+
+        <div className="bg-[#F5F5FA] border border-[#E5E7EB] rounded-2xl p-6 transition-all hover:border-gray-300">
+          <div className="font-serif text-3xl md:text-4xl text-[#0B1220] tracking-tight mb-1">
+            100%
+          </div>
+          <div className="text-sm font-semibold text-[#0B1220] mb-1">
+            Audit Durability
+          </div>
+          <div className="text-xs text-[#6B7280] leading-relaxed">
+            Every prompt, response, and gate transition is persisted immutably in PostgreSQL.
+          </div>
         </div>
       </div>
     </section>

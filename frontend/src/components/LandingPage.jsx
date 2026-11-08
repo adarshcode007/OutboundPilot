@@ -9,9 +9,9 @@ import Footer from './Footer';
 
 export default function LandingPage({ onNavigate, onSelectPreset }) {
   return (
-    <div>
+    <div className="min-h-screen bg-white text-[#1F2937] selection:bg-[#3B6BF0]/15 selection:text-[#0B1220]">
       <Navbar onNavigate={onNavigate} />
-      <main className="landing-wrapper">
+      <main>
         <Hero onNavigate={onNavigate} />
         <ArchitectureSection />
         <SimulatorSection onSelectPreset={onSelectPreset} />

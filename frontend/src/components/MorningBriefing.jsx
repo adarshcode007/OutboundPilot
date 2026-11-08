@@ -2,509 +2,405 @@ import React, { useState, useRef, useEffect } from 'react';
 import { apiFetch } from '../apiClient';
 
 export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
-    // Only review leads that are DRAFTED (awaiting review)
-    const reviewLeads = leads.filter(l => l.status === "DRAFTED");
+  // Only review leads that are DRAFTED (awaiting review)
+  const reviewLeads = leads.filter((l) => l.status === "DRAFTED");
 
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [editableDraft, setEditableDraft] = useState("");
-    const [recipientEmail, setRecipientEmail] = useState("");
-    const [critique, setCritique] = useState("");
-    const [actionLoading, setActionLoading] = useState(false);
-    const [notice, setNotice] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [editableDraft, setEditableDraft] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [critique, setCritique] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [notice, setNotice] = useState(null);
 
-    // 3-Touch Cadence State
-    const [cadence, setCadence] = useState(null);
-    const [activeTouchStep, setActiveTouchStep] = useState(1);
-    const [cadenceLoading, setCadenceLoading] = useState(false);
+  // 3-Touch Cadence State
+  const [cadence, setCadence] = useState(null);
+  const [activeTouchStep, setActiveTouchStep] = useState(1);
+  const [cadenceLoading, setCadenceLoading] = useState(false);
 
-    const textareaRef = useRef(null);
-    const currentLead = reviewLeads[currentIndex] || null;
+  const textareaRef = useRef(null);
+  const currentLead = reviewLeads[currentIndex] || null;
 
-    // Fetch stored cadence for the active lead
-    const fetchCadence = async (leadId) => {
-        try {
-            const res = await apiFetch(`/api/leads/${leadId}/cadence`);
-            if (res.ok) {
-                const data = await res.json();
-                setCadence(data.cadence || null);
-                if (data.cadence?.touch_1?.body) {
-                    setEditableDraft(prev => (prev && prev.trim()) ? prev : data.cadence.touch_1.body);
-                }
-            } else {
-                setCadence(null);
-            }
-        } catch (e) {
-            setCadence(null);
+  // Fetch stored cadence for the active lead
+  const fetchCadence = async (leadId) => {
+    try {
+      const res = await apiFetch(`/api/leads/${leadId}/cadence`);
+      if (res.ok) {
+        const data = await res.json();
+        setCadence(data.cadence || null);
+        if (data.cadence?.touch_1?.body) {
+          setEditableDraft((prev) => (prev && prev.trim() ? prev : data.cadence.touch_1.body));
         }
+      } else {
+        setCadence(null);
+      }
+    } catch (e) {
+      setCadence(null);
+    }
+  };
+
+  // Sync draft and cadence when switching cards
+  useEffect(() => {
+    if (currentLead) {
+      const initialDraft = currentLead.email_draft || currentLead.cadence?.touch_1?.body || "";
+      setEditableDraft(initialDraft);
+      setRecipientEmail(currentLead.contact_email || "");
+      setCritique("");
+      setNotice(null);
+      setActiveTouchStep(1);
+      fetchCadence(currentLead.id);
+    }
+  }, [currentIndex, currentLead?.id]);
+
+  // Generate 3-Touch Cadence on-demand
+  const handleGenerateCadence = async () => {
+    if (!currentLead) return;
+    setCadenceLoading(true);
+    setNotice(null);
+
+    try {
+      const res = await apiFetch(`/api/leads/${currentLead.id}/cadence/generate`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to generate cadence");
+      const data = await res.json();
+      setCadence(data.cadence);
+      if (data.cadence?.touch_1?.body) {
+        setEditableDraft(data.cadence.touch_1.body);
+      }
+      setNotice("✓ Successfully generated 3-touch follow-up cadence!");
+    } catch (err) {
+      alert("Cadence generation error: " + err.message);
+    } finally {
+      setCadenceLoading(false);
+    }
+  };
+
+  // Keyboard navigation & hotkeys
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger shortcuts if user is typing in input or textarea
+      if (["TEXTAREA", "INPUT"].includes(document.activeElement?.tagName)) {
+        if (e.key === "Escape") {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleAction("APPROVE");
+      } else if (e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      } else if (e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        handleAction("REJECT");
+      } else if (e.key === "ArrowRight" && currentIndex < reviewLeads.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else if (e.key === "ArrowLeft" && currentIndex > 0) {
+        setCurrentIndex((prev) => prev - 1);
+      } else if (e.key === "Escape") {
+        onClose();
+      }
     };
 
-    // Sync draft and cadence when switching cards
-    useEffect(() => {
-        if (currentLead) {
-            const initialDraft = currentLead.email_draft || currentLead.cadence?.touch_1?.body || "";
-            setEditableDraft(initialDraft);
-            setRecipientEmail(currentLead.contact_email || "");
-            setCritique("");
-            setNotice(null);
-            setActiveTouchStep(1);
-            fetchCadence(currentLead.id);
-        }
-    }, [currentIndex, currentLead?.id]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, reviewLeads.length, editableDraft]);
 
-    // Generate 3-Touch Cadence on-demand
-    const handleGenerateCadence = async () => {
-        if (!currentLead) return;
-        setCadenceLoading(true);
-        setNotice(null);
+  // Submit human action (Approve, Re-draft, Reject)
+  const handleAction = async (actionType) => {
+    if (!currentLead) return;
+    setActionLoading(true);
+    setNotice(null);
 
-        try {
-            const res = await apiFetch(`/api/leads/${currentLead.id}/cadence/generate`, {
-                method: "POST",
-            });
-            if (!res.ok) throw new Error("Failed to generate cadence");
-            const data = await res.json();
-            setCadence(data.cadence);
-            if (data.cadence?.touch_1?.body) {
-                setEditableDraft(data.cadence.touch_1.body);
-            }
-            setNotice("✓ Successfully generated 3-touch follow-up cadence!");
-        } catch (err) {
-            alert("Cadence generation error: " + err.message);
-        } finally {
-            setCadenceLoading(false);
-        }
-    };
+    try {
+      const threadId = currentLead.thread_id || `camp_${currentLead.id.slice(0, 8)}`;
+      const payload = {
+        action: actionType,
+        edited_draft: editableDraft,
+        critique: critique,
+        lead_id: currentLead.id,
+        recipient_email: recipientEmail,
+      };
 
-    // Keyboard navigation & hotkeys
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            // Dont trigger shortcuts if user is typing in input or textarea
-            if (['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName)) {
-                if (e.key === 'Escape') {
-                    document.activeElement.blur();
-                }
-                return;
-            }
+      const res = await apiFetch(`/api/campaign/${threadId}/action`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
 
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAction("APPROVE");
-            } else if (e.key.toLowerCase() === 'e') {
-                e.preventDefault();
-                textareaRef.current?.focus();
-            } else if (e.key.toLowerCase() === 'x') {
-                e.preventDefault();
-                handleAction("REJECT");
-            } else if (e.key === 'ArrowRight' && currentIndex < reviewLeads.length - 1) {
-                setCurrentIndex(prev => prev + 1);
-            } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
-                setCurrentIndex(prev => prev - 1);
-            } else if (e.key === 'Escape') {
-                onClose()
-            }
-        };
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || "Failed to process action");
+      }
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentIndex, reviewLeads.length, editableDraft]);
+      if (actionType === "REDRAFT") {
+        setEditableDraft(data.revised_draft || "");
+        setCritique("");
+        setNotice("✓ AI Copywriter successfully revised proposal!");
+      } else {
+        setNotice(data.message || "Action processed successfully.");
+        if (onRefresh) onRefresh();
 
-    // Submit human action (Approve, Re-draft, Reject)
-    const handleAction = async (actionType) => {
-        if (!currentLead) return;
-        setActionLoading(true);
-        setNotice(null);
+        setTimeout(() => {
+          setCurrentIndex((prev) => {
+            const remaining = reviewLeads.length - 1;
+            if (remaining <= 0) return 0;
+            return prev >= remaining ? remaining - 1 : prev;
+          });
+        }, 350);
+      }
+    } catch (err) {
+      alert("Action failed: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-        try {
-            const threadId = currentLead.thread_id || `camp_${currentLead.id.slice(0, 8)}`;
-            const payload = {
-                action: actionType,
-                edited_draft: editableDraft,
-                critique: critique,
-                lead_id: currentLead.id,
-                recipient_email: recipientEmail,
-            };
+  // Export Enriched Leads to CSV
+  const handleExportCsv = () => {
+    if (leads.length === 0) return;
 
-            const res = await apiFetch(`/api/campaign/${threadId}/action`, {
-                method: "POST",
-                body: JSON.stringify(payload),
-            });
+    const headers = [
+      "Company",
+      "Role",
+      "Contact Name",
+      "Email",
+      "Priority Score",
+      "ICP Fit",
+      "Judge Score",
+      "Status",
+      "Draft",
+    ];
+    const rows = leads.map((l) => [
+      `"${(l.company || "").replace(/"/g, '""')}"`,
+      `"${(l.role || "").replace(/"/g, '""')}"`,
+      `"${(l.contact_name || "").replace(/"/g, '""')}"`,
+      `"${(l.contact_email || "").replace(/"/g, '""')}"`,
+      l.priority_score || 0,
+      l.icp_fit_score || "",
+      l.eval_score || "",
+      `"${l.status || ""}"`,
+      `"${(l.email_draft || "").replace(/"/g, '""')}"`,
+    ]);
 
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.detail || data.message || "Failed to process action");
-            }
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `outbound_leads_export_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-            if (actionType === "REDRAFT") {
-                setEditableDraft(data.revised_draft || "");
-                setCritique("");
-                setNotice("✓ AI Copywriter successfully revised proposal!");
-            } else {
-                setNotice(data.message || "Action processed successfully.");
-                if (onRefresh) onRefresh();
-
-                // Advance to next card: since approved/rejected lead leaves reviewLeads,
-                // the next pending card naturally shifts into current index.
-                setTimeout(() => {
-                    setCurrentIndex(prev => {
-                        const remaining = reviewLeads.length - 1;
-                        if (remaining <= 0) return 0;
-                        return prev >= remaining ? remaining - 1 : prev;
-                    });
-                }, 350);
-            }
-        } catch (err) {
-            alert("Action failed: " + err.message);
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    // Export Enriched Leads to CSV
-    const handleExportCsv = () => {
-        if (leads.length === 0) return;
-
-        const headers = ["company", "Role", "Contact Name", "Email", "Priority Score",
-            "ICP Fit", "Judge Score", "Status", "Draft"
-        ];
-        const rows = leads.map(l => [
-            `"${(l.company || "").replace(/"/g, '""')}"`,
-            `"${(l.role || "").replace(/"/g, '""')}"`,
-            `"${(l.contact_name || "").replace(/"/g, '""')}"`,
-            `"${(l.contact_email || "").replace(/"/g, '""')}"`,
-            l.priority_score || 0,
-            l.icp_fit_score || "",
-            l.eval_score || "",
-            `"${l.status || ""}"`,
-            `"${(l.email_draft || "").replace(/"/g, '""')}"`,
-        ]);
-
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `outbound_leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    return (
-        <div
-            style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(6, 9, 17, 0.88)",
-                backdropFilter: "blur(20px)",
-                zIndex: 100,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "1.5rem",
-            }}
-        >
-            <div
-                className="card"
-                style={{
-                    maxWidth: "860px",
-                    width: "100%",
-                    maxHeight: "92vh",
-                    overflowY: "auto",
-                    boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6)",
-                    border: "1px solid var(--border-accent)",
-                }}
-            >
-                {/* Top Header */}
-                <div className="card-header" style={{ borderBottom: "1px solid var(--border-subtle)", paddingBottom: "1rem" }}>
-                    <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <span style={{ fontSize: "1.3rem" }}>☀️</span>
-                            <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#ffffff" }}>
-                                Morning SDR Briefing Deck
-                            </h2>
-                        </div>
-                        <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginTop: "4px" }}>
-                            {reviewLeads.length > 0
-                                ? `Reviewing Lead ${currentIndex + 1} of ${reviewLeads.length}`
-                                : "No leads currently awaiting review."}
-                        </div>
-                    </div>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                        <button
-                            className="btn btn-outline"
-                            style={{ fontSize: "0.8rem", padding: "6px 12px" }}
-                            onClick={handleExportCsv}
-                        >
-                            📥 Export CSV
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            style={{ fontSize: "0.8rem", padding: "6px 12px" }}
-                            onClick={onClose}
-                        >
-                            ✕ Close (Esc)
-                        </button>
-                    </div>
-                </div>
-                {reviewLeads.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
-                        <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🎉</div>
-                        <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#ffffff" }}>
-                            All Caught Up!
-                        </div>
-                        <div style={{ fontSize: "0.85rem", marginTop: "4px" }}>
-                            No drafted leads are waiting for review. Launch another batch from the queue!
-                        </div>
-                    </div>
-                ) : (
-                    <div>
-                        {/* Lead Identity Bar */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: "1rem", marginBottom: "1rem" }}>
-                            <div>
-                                <h3 style={{ fontSize: "1.35rem", fontWeight: 800, color: "#ffffff" }}>
-                                    {currentLead.company}
-                                </h3>
-                                <div style={{ fontSize: "0.9rem", color: "var(--text-medium)" }}>
-                                    {currentLead.contact_name || "Target Executive"} • {currentLead.role || "Executive Role"}
-                                </div>
-                                <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "0.78rem", color: "#a5b4fc", fontWeight: 700 }}>
-                                        ✉️ Send To:
-                                    </span>
-                                    <input
-                                        type="email"
-                                        value={recipientEmail}
-                                        onChange={(e) => setRecipientEmail(e.target.value)}
-                                        placeholder="target.exec@company.com (or personal test email)"
-                                        style={{
-                                            background: "#080c16",
-                                            border: "1px solid var(--border-subtle)",
-                                            color: "#ffffff",
-                                            padding: "4px 10px",
-                                            borderRadius: "6px",
-                                            fontSize: "0.82rem",
-                                            fontFamily: "JetBrains Mono, monospace",
-                                            width: "320px",
-                                            outline: "none"
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            {/* Priority & Tier Tag */}
-                            <div style={{ textAlign: "right" }}>
-                                <span className="tag tag-success" style={{ fontSize: "0.75rem" }}>
-                                    {currentLead.priority_score} pts Priority
-                                </span>
-                                <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: "4px" }}>
-                                    {currentLead.priority_tier} Tier
-                                </div>
-                            </div>
-                        </div>
-                        {/* AI Research Brief & Judge Seal */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "1rem", marginBottom: "1.2rem" }}>
-                            {/* Executive Research Box */}
-                            <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "12px", fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text-medium)" }}>
-                                <div style={{ fontWeight: 700, color: "#a5b4fc", marginBottom: "6px" }}>
-                                    📊 Web Research Signals:
-                                </div>
-                                {currentLead.research_summary || "Live intelligence gathering verified recent expansion and tech stack initiatives."}
-                            </div>
-                            {/* AI Judge Badge */}
-                            <div style={{ background: "rgba(99, 102, 241, 0.08)", border: "1px solid var(--border-accent)", borderRadius: "8px", padding: "12px", fontSize: "0.82rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                                    <span style={{ fontWeight: 700, color: "#38bdf8" }}>
-                                        🛡️ AI Judge: {currentLead.eval_score || 8}/10 [PASS]
-                                    </span>
-                                    <span className="tag tag-success" style={{ fontSize: "0.65rem", padding: "2px 6px" }}>Pre-Screened</span>
-                                </div>
-                                <div style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
-                                    Factual Grounding: 9/10 • Deliverability: 9/10 • Pitch length &lt; 120 words.
-                                </div>
-                            </div>
-                        </div>
-                        {/* Action Feedback Notice */}
-                        {notice && (
-                            <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid var(--success)", padding: "10px 14px", borderRadius: "6px", fontSize: "0.85rem", color: "#34d399", marginBottom: "1rem" }}>
-                                {notice}
-                            </div>
-                        )}
-                        {/* 3-Touch Cadence Toolbar & Tabs */}
-                        <div style={{ background: "#0b1120", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 14px", marginBottom: "1rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: cadence ? "10px" : "0" }}>
-                                <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#93c5fd", display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <span>📅</span> Multi-Touch Outbound Cadence (3 Steps):
-                                </div>
-                                {!cadence && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        style={{ fontSize: "0.78rem", padding: "4px 10px", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2))" }}
-                                        onClick={handleGenerateCadence}
-                                        disabled={cadenceLoading}
-                                    >
-                                        {cadenceLoading ? "Generating Cadence..." : "✨ Generate 3-Touch Sequence"}
-                                    </button>
-                                )}
-                            </div>
-
-                            {cadence && (
-                                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                                    <button
-                                        type="button"
-                                        className={`btn ${activeTouchStep === 1 ? 'btn-primary' : 'btn-secondary'}`}
-                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
-                                        onClick={() => setActiveTouchStep(1)}
-                                    >
-                                        Touch 1 (Day 1: The Hook)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn ${activeTouchStep === 2 ? 'btn-primary' : 'btn-secondary'}`}
-                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
-                                        onClick={() => setActiveTouchStep(2)}
-                                    >
-                                        Touch 2 (Day 3: Value Bump)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn ${activeTouchStep === 3 ? 'btn-primary' : 'btn-secondary'}`}
-                                        style={{ fontSize: "0.78rem", padding: "5px 12px" }}
-                                        onClick={() => setActiveTouchStep(3)}
-                                    >
-                                        Touch 3 (Day 7: Breakup)
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Display Active Touch Content */}
-                        {activeTouchStep === 1 ? (
-                            /* Editable Draft Proposal (Touch 1) */
-                            <div className="form-group" style={{ marginBottom: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <label style={{ color: "#ffffff", fontWeight: 700 }}>
-                                        Touch 1 Proposal: Initial Hook (Press 'E' to edit)
-                                    </label>
-                                    <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-                                        {(editableDraft || cadence?.touch_1?.body || currentLead?.email_draft || "").split(/\s+/).filter(Boolean).length} words
-                                    </span>
-                                </div>
-                                {cadence?.touch_1?.subject && (
-                                    <div style={{ fontSize: "0.82rem", color: "#a5b4fc", margin: "6px 0", background: "rgba(99, 102, 241, 0.08)", padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                                        <strong>Subject:</strong> {cadence.touch_1.subject}
-                                    </div>
-                                )}
-                                <textarea
-                                    ref={textareaRef}
-                                    value={editableDraft || cadence?.touch_1?.body || currentLead?.email_draft || ""}
-                                    onChange={e => setEditableDraft(e.target.value)}
-                                    rows={5}
-                                    style={{ marginTop: "6px" }}
-                                    placeholder="Enter your initial hook outreach proposal here..."
-                                />
-                            </div>
-                        ) : activeTouchStep === 2 && cadence?.touch_2 ? (
-                            /* Touch 2 Preview */
-                            <div style={{ background: "#080c16", border: "1px solid var(--border-accent)", borderRadius: "8px", padding: "14px", marginBottom: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                                    <span style={{ fontWeight: 700, color: "#a5b4fc", fontSize: "0.85rem" }}>
-                                        Touch 2 (Day 3 Follow-Up) • {cadence.touch_2.intent}
-                                    </span>
-                                    <span className="tag tag-info" style={{ fontSize: "0.68rem" }}>Automated Drip at Day +3</span>
-                                </div>
-                                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "6px" }}>
-                                    <strong>Subject:</strong> {cadence.touch_2.subject}
-                                </div>
-                                <div style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", lineHeight: 1.6, color: "var(--text-medium)" }}>
-                                    {cadence.touch_2.body}
-                                </div>
-                            </div>
-                        ) : activeTouchStep === 3 && cadence?.touch_3 ? (
-                            /* Touch 3 Preview */
-                            <div style={{ background: "#080c16", border: "1px solid var(--border-accent)", borderRadius: "8px", padding: "14px", marginBottom: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                                    <span style={{ fontWeight: 700, color: "#a5b4fc", fontSize: "0.85rem" }}>
-                                        Touch 3 (Day 7 Polite Breakup) • {cadence.touch_3.intent}
-                                    </span>
-                                    <span className="tag tag-info" style={{ fontSize: "0.68rem" }}>Automated Drip at Day +7</span>
-                                </div>
-                                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "6px" }}>
-                                    <strong>Subject:</strong> {cadence.touch_3.subject}
-                                </div>
-                                <div style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", lineHeight: 1.6, color: "var(--text-medium)" }}>
-                                    {cadence.touch_3.body}
-                                </div>
-                            </div>
-                        ) : null}
-                        {/* AI Re-draft Critique Input */}
-                        <div style={{ background: "#080c16", border: "1px solid var(--border-subtle)", padding: "12px", borderRadius: "8px", marginBottom: "1.2rem" }}>
-                            <label style={{ color: "#a5b4fc", fontSize: "0.8rem" }}>
-                                💬 Natural Language Feedback for AI Copywriter (Optional)
-                            </label>
-                            <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-                                <input
-                                    value={critique}
-                                    onChange={e => setCritique(e.target.value)}
-                                    placeholder="e.g. 'Shorten first paragraph and emphasize cost reduction'"
-                                    style={{ fontSize: "0.85rem" }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}
-                                    onClick={() => handleAction("REDRAFT")}
-                                    disabled={actionLoading || !critique.trim()}
-                                >
-                                    {actionLoading ? "Rewriting..." : "✨ Ask AI to Re-draft"}
-                                </button>
-                            </div>
-                        </div>
-                        {/* Action Controls & Keyboard Hints */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-subtle)", paddingTop: "1rem" }}>
-                            {/* Keyboard Shortcuts Guide */}
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", display: "flex", gap: "12px" }}>
-                                <span><kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: "4px" }}>Enter</kbd> Approve</span>
-                                <span><kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: "4px" }}>E</kbd> Edit</span>
-                                <span><kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: "4px" }}>X</kbd> Reject</span>
-                                <span><kbd style={{ background: "#1e293b", padding: "2px 6px", borderRadius: "4px" }}>← / →</kbd> Navigate</span>
-                            </div>
-                            {/* Action Buttons */}
-                            <div style={{ display: "flex", gap: "10px" }}>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                                    disabled={currentIndex === 0 || actionLoading}
-                                >
-                                    ← Prev
-                                </button>
-                                <button
-                                    className="btn btn-danger"
-                                    onClick={() => handleAction("REJECT")}
-                                    disabled={actionLoading}
-                                >
-                                    🛑 Reject (X)
-                                </button>
-                                <button
-                                    className="btn btn-success"
-                                    onClick={() => handleAction("APPROVE")}
-                                    disabled={actionLoading}
-                                >
-                                    {actionLoading ? "Dispatching..." : "✓ Approve & Send (Enter)"}
-                                </button>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => setCurrentIndex(prev => Math.min(reviewLeads.length - 1, prev + 1))}
-                                    disabled={currentIndex === reviewLeads.length - 1 || actionLoading}
-                                >
-                                    Next →
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+  return (
+    <div className="fixed inset-0 bg-[#0B1220]/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 md:p-6 transition-opacity">
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Header Bar */}
+        <div className="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">☀️</span>
+            <div>
+              <h3 className="font-serif text-xl font-normal text-[#0B1220] tracking-tight">
+                Morning SDR Card-Swipe Briefing
+              </h3>
+              <p className="text-xs text-[#6B7280]">
+                {reviewLeads.length > 0
+                  ? `Reviewing ${currentIndex + 1} of ${reviewLeads.length} prioritized drafts`
+                  : "All morning drafts processed"}
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCsv}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] transition-colors"
+            >
+              📥 Export CSV
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#0B1220] hover:bg-[#F5F5FA] transition-colors"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-    )
+
+        {/* Content Area */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {reviewLeads.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-4xl mb-3">🎉</div>
+              <h4 className="font-serif text-2xl text-[#0B1220] mb-2">
+                All drafts reviewed and cleared!
+              </h4>
+              <p className="text-xs text-[#6B7280] max-w-sm mx-auto mb-6">
+                No more campaigns awaiting sign-off. Launch new leads from your queue or trigger the scheduled drip.
+              </p>
+              <button
+                onClick={onClose}
+                className="bg-[#0B1220] text-white text-xs font-medium px-4 py-2 rounded-lg"
+              >
+                Close Briefing
+              </button>
+            </div>
+          ) : (
+            <>
+              {notice && (
+                <div className="p-3 rounded-lg bg-[#3B6BF0]/10 border border-[#3B6BF0]/20 text-[#3B6BF0] text-xs font-medium">
+                  {notice}
+                </div>
+              )}
+
+              {/* Target Account Overview */}
+              <div className="bg-[#F5F5FA] border border-[#E5E7EB] rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-serif text-2xl text-[#0B1220] tracking-tight">
+                      {currentLead.company}
+                    </h4>
+                    <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {currentLead.priority_score} pts Priority
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#6B7280]">
+                    {currentLead.role || "Executive Contact"} • {currentLead.contact_name || "Target Executive"}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-xs font-semibold text-[#0B1220]">
+                      ICP: {currentLead.icp_fit_score || 8}/10
+                    </div>
+                    <div className="text-[11px] text-[#6B7280]">
+                      Judge: {currentLead.eval_score || 9}/10 (Grounded)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3-Touch Follow-up Cadence Selector */}
+              <div className="p-4 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] flex items-center gap-1.5">
+                    <span>📅</span>
+                    <span>3-Touch Outbound Cadence</span>
+                  </div>
+                  {!cadence && (
+                    <button
+                      onClick={handleGenerateCadence}
+                      disabled={cadenceLoading}
+                      className="text-xs text-[#3B6BF0] hover:underline font-medium"
+                    >
+                      {cadenceLoading ? "Generating..." : "Generate 3-Touch Follow-ups"}
+                    </button>
+                  )}
+                </div>
+
+                {cadence && (
+                  <div className="flex gap-2">
+                    {[
+                      { step: 1, label: "Touch 1: Hook (Day 1)", data: cadence.touch_1 },
+                      { step: 2, label: "Touch 2: Value Bump (Day 3)", data: cadence.touch_2 },
+                      { step: 3, label: "Touch 3: Breakup (Day 7)", data: cadence.touch_3 },
+                    ].map((t) => (
+                      <button
+                        key={t.step}
+                        onClick={() => {
+                          setActiveTouchStep(t.step);
+                          if (t.data?.body) setEditableDraft(t.data.body);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          activeTouchStep === t.step
+                            ? "bg-[#0B1220] text-white"
+                            : "bg-[#F5F5FA] text-[#6B7280] hover:text-[#0B1220] border border-[#E5E7EB]"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Editable Draft */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+                  Draft Proposal (Editable before sending)
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  value={editableDraft}
+                  onChange={(e) => setEditableDraft(e.target.value)}
+                  rows={6}
+                  className="w-full p-4 rounded-xl border border-[#E5E7EB] bg-white text-sm text-[#0B1220] font-sans leading-relaxed focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                />
+              </div>
+
+              {/* AI Re-draft instruction */}
+              <div className="p-4 rounded-xl bg-[#FAFBFD] border border-[#E5E7EB]">
+                <label className="block text-xs font-semibold text-[#0B1220] mb-2">
+                  💬 Natural Language Revision for AI Copywriter (Optional)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={critique}
+                    onChange={(e) => setCritique(e.target.value)}
+                    placeholder="e.g. 'Make it punchier and mention our Docker PostgreSQL deployment'..."
+                    className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] bg-white focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
+                  />
+                  <button
+                    onClick={() => handleAction("REDRAFT")}
+                    disabled={actionLoading || !critique.trim()}
+                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] text-[#0B1220] border border-[#E5E7EB] disabled:opacity-50 transition-colors"
+                  >
+                    {actionLoading ? "Rewriting..." : "✨ Re-draft"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        {reviewLeads.length > 0 && (
+          <div className="px-6 py-4 border-t border-[#E5E7EB] bg-[#FAFBFD] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+              <span>Hotkeys:</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs">Enter</kbd> Approve
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">E</kbd> Edit
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">X</kbd> Reject
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E5E7EB] text-[10px] font-mono shadow-2xs ml-1">← / →</kbd> Browse
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleAction("REJECT")}
+                disabled={actionLoading}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors disabled:opacity-50"
+              >
+                Reject (X)
+              </button>
+              <button
+                onClick={() => handleAction("APPROVE")}
+                disabled={actionLoading}
+                className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {actionLoading ? "Dispatching..." : "Approve & Dispatch (↵)"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
