@@ -68,6 +68,16 @@ def init_queue_schema():
                     dispatched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
 
+                CREATE TABLE IF NOT EXISTS scheduler_runs (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    run_date DATE NOT NULL,
+                    run_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    status VARCHAR(32) NOT NULL,
+                    leads_processed INTEGER DEFAULT 0,
+                    details JSONB DEFAULT '{}'
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_scheduler_runs_date ON scheduler_runs(run_date);
                 CREATE INDEX IF NOT EXISTS idx_dispatch_ledger_recipient ON dispatch_ledger(recipient);
 
                 CREATE INDEX IF NOT EXISTS idx_lead_queue_priority ON lead_queue(status, priority_score DESC);
@@ -574,3 +584,59 @@ def get_analytics_summary(user_id: Optional[str] = None) -> Dict[str, Any]:
                     "sentiment_breakdown": sentiment_map,
                 },
             }
+
+def log_scheduler_run(
+    status: str,
+    leads_processed: int = 0,
+    details: Optional[Dict[str, Any]] = None,
+    run_date: Optional[date] = None
+) -> str:
+    """Logs a completed, skipped, or idle scheduler drip batch into PostgreSQL."""
+    today = run_date or date.today()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO scheduler_runs (run_date, status, leads_processed, details)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id;
+            """, (today, status, leads_processed, json.dumps(details or {})))
+            run_id = cur.fetchone()[0]
+            return str(run_id)
+
+def has_drip_run_today() -> bool:
+    """Checks PostgreSQL to verify if a morning drip batch has already been recorded for today."""
+    today = date.today()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT COUNT(*) FROM scheduler_runs
+                WHERE run_date = %s AND status IN ('COMPLETED', 'SKIPPED', 'IDLE')
+            """, (today,))
+            count = cur.fetchone()[0]
+            return count > 0
+
+def get_latest_drip_run_today() -> Optional[Dict[str, Any]]:
+    """Returns details of the latest drip run recorded for today in PostgreSQL."""
+    today = date.today()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, run_date, run_time, status, leads_processed, details
+                FROM scheduler_runs
+                WHERE run_date = %s
+                ORDER BY run_time DESC
+                LIMIT 1;
+            """, (today,))
+            row = cur.fetchone()
+            if row:
+                raw_details = row[5]
+                parsed_details = raw_details if isinstance(raw_details, dict) else json.loads(raw_details or "{}")
+                return {
+                    "id": str(row[0]),
+                    "run_date": row[1].isoformat(),
+                    "run_time": row[2].isoformat() if row[2] else None,
+                    "status": row[3],
+                    "leads_processed": row[4],
+                    "details": parsed_details,
+                }
+            return None
