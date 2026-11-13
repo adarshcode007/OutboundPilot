@@ -114,19 +114,17 @@ if os.path.exists("frontend/dist"):
 elif os.path.exists("frontend"):
     app.mount("/app", StaticFiles(directory="frontend", html=True), name="frontend")
 
-# Initialize Checkpointer (Docker PostgreSQL with MemorySaver fallback)
-POSTGRES_URI = os.getenv("POSTGRES_URI", "").strip()
-pool = None
+# Initialize Checkpointer using the centralized ConnectionPool singleton from queue_manager
+from queue_manager import pool, POSTGRES_URI
 checkpointer = None
 
-if POSTGRES_URI:
+if POSTGRES_URI and pool:
     try:
-        pool = ConnectionPool(conninfo=POSTGRES_URI, max_size=20, kwargs={"autocommit": True})
         checkpointer = PostgresSaver(pool)
         checkpointer.setup()
-        print(">> [API] Connected to Docker PostgreSQL checkpointer.")
+        print(">> [API] Connected to Docker PostgreSQL checkpointer via shared pool.")
     except Exception as e:
-        print(f">> [API] Postgres connection failed ({e}). Falling back to MemorySaver.")
+        print(f">> [API] Postgres checkpointer setup failed ({e}). Falling back to MemorySaver.")
         checkpointer = MemorySaver()
 else:
     checkpointer = MemorySaver()

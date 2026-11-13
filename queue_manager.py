@@ -20,8 +20,10 @@ load_dotenv()
 
 POSTGRES_URI = os.getenv("POSTGRES_URI", "postgresql://postgres@localhost:5432/postgres")
 DAILY_QUOTA_LIMIT = int(os.getenv("DAILY_QUOTA_LIMIT", "10"))
+PG_POOL_MAX_SIZE = int(os.getenv("PG_POOL_MAX_SIZE", "12"))
 
-pool = ConnectionPool(conninfo=POSTGRES_URI, max_size=10, kwargs={"autocommit": True})
+# Centralized application-wide ConnectionPool singleton shared across API, Auth, and Checkpointer
+pool = ConnectionPool(conninfo=POSTGRES_URI, max_size=PG_POOL_MAX_SIZE, kwargs={"autocommit": True})
 
 def init_queue_schema():
     """Initializes the lead_queue table and indexes in PostgreSQL."""
