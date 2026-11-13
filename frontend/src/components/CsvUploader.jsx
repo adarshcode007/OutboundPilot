@@ -1,45 +1,33 @@
 import React, { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { apiFetch } from '../apiClient';
 
-// Fuzzy header mapping rules
-const HEADER_MAP = {
-  company: ["company", "company_name", "account", "organization", "firm"],
-  role: ["role", "job_title", "title", "position", "target_role"],
-  contact_name: ["name", "full_name", "first_name", "contact", "lead_name"],
-  contact_email: ["email", "work_email", "contact_email", "email_address"],
-};
-
+// Smart header normalization rules
 function normalizeHeader(header) {
-  const clean = header.toLowerCase().replace(/[\s_-]+/g, "");
-  for (const [standardKey, aliases] of Object.entries(HEADER_MAP)) {
-    if (aliases.some(alias => clean.includes(alias.replace(/[\s_-]+/g, "")))) {
-      return standardKey;
-    }
+  if (!header) return "";
+  const clean = String(header).toLowerCase().replace(/[\s_-]+/g, "");
+
+  // 1. Email check first (prevents "contact email" matching "contact" or "name")
+  if (clean.includes("email") || clean.includes("mail")) {
+    return "contact_email";
   }
-  return header.trim();
-}
 
-// Simple RFC 4180-compliant client-side CSV parser
-function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(',').map(h => normalizeHeader(h.replace(/^["']|["']$/g, "")));
-  const rows = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v =>
-      v.replace(/^["']|["']$/g, '').trim()
-    );
-    const row = {};
-    headers.forEach((header, idx) => {
-      row[header] = values[idx] || "";
-    });
-    if (row.company || row.contact_email) {
-      rows.push(row);
-    }
+  // 2. Company / Account / Organization
+  if (["company", "companyname", "account", "organization", "firm", "business", "client"].some(k => clean.includes(k))) {
+    return "company";
   }
-  return rows;
+
+  // 3. Role / Job Title / Position
+  if (["role", "jobtitle", "title", "position", "targetrole", "occupation", "headline"].some(k => clean.includes(k))) {
+    return "role";
+  }
+
+  // 4. Contact Name / Full Name / Person
+  if (["fullname", "firstname", "lastname", "leadname", "name", "contact", "person"].some(k => clean.includes(k))) {
+    return "contact_name";
+  }
+
+  return clean;
 }
 
 export default function CsvUploader({ onUploadSuccess }) {
@@ -49,8 +37,12 @@ export default function CsvUploader({ onUploadSuccess }) {
   const fileInputRef = useRef(null);
 
   const processFile = async (file) => {
-    if (!file || !file.name.endsWith('.csv')) {
-      setError("Please upload a valid .csv file.");
+    if (!file) return;
+
+    const validExtensions = ['.csv', '.xlsx', '.xls', '.tsv', '.txt'];
+    const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!hasValidExt) {
+      setError("Please upload a valid CSV or Excel file (.csv, .xlsx, .xls).");
       return;
     }
 
@@ -58,11 +50,37 @@ export default function CsvUploader({ onUploadSuccess }) {
     setUploading(true);
 
     try {
-      const text = await file.text();
-      const parsedLeads = parseCsv(text);
+      const buffer = await file.arrayBuffer();
+      // XLSX parses Excel (.xlsx/.xls) and delimited text (.csv/.tsv) seamlessly
+      const workbook = XLSX.read(buffer, { type: 'array' });
+
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error("Spreadsheet contains no sheets.");
+      }
+
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+      if (!rawRows || rawRows.length === 0) {
+        throw new Error("No data rows found in spreadsheet.");
+      }
+
+      const parsedLeads = rawRows.map(row => {
+        const normalized = {};
+        for (const [key, val] of Object.entries(row)) {
+          const normKey = normalizeHeader(key);
+          normalized[normKey] = typeof val === 'string' ? val.trim() : String(val ?? '').trim();
+        }
+        return {
+          company: normalized.company || "",
+          role: normalized.role || "",
+          contact_name: normalized.contact_name || "",
+          contact_email: normalized.contact_email || "",
+        };
+      }).filter(lead => lead.company || lead.contact_email);
 
       if (parsedLeads.length === 0) {
-        throw new Error("CSV file contains no valid lead records.");
+        throw new Error("No valid leads found. Please ensure headers include Company, Role, and Email.");
       }
 
       // Send to backend for zero-token regex scoring and PostgreSQL insertion
@@ -81,7 +99,7 @@ export default function CsvUploader({ onUploadSuccess }) {
         onUploadSuccess(data);
       }
     } catch (err) {
-      setError(err.message || "Failed to process CSV file.");
+      setError(err.message || "Failed to process lead file.");
     } finally {
       setUploading(false);
     }
@@ -101,13 +119,18 @@ export default function CsvUploader({ onUploadSuccess }) {
         <div className="flex items-center gap-2.5">
           <span className="text-xl">📁</span>
           <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-            Batch CSV Ingestion &amp; Auto-Mapper
+            Batch Lead Ingestion &amp; Auto-Mapper
           </h3>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
-          <span>⚡</span>
-          <span>0 LLM Tokens (Regex Scored)</span>
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
+            <span>⚡</span>
+            <span>0 LLM Tokens (Regex Scored)</span>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800">
+            CSV / XLSX / XLS
+          </span>
+        </div>
       </div>
 
       <div
@@ -124,16 +147,16 @@ export default function CsvUploader({ onUploadSuccess }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".csv, .xlsx, .xls, .tsv, .txt, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
           className="hidden"
           onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
         />
         <div className="text-3xl mb-2">📄</div>
         <div className="text-sm font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-          {uploading ? "Extracting & Prioritizing Leads..." : "Click or drag & drop target CSV file here"}
+          {uploading ? "Extracting & Prioritizing Leads..." : "Click or drag & drop CSV or Excel spreadsheet here"}
         </div>
         <div className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
-          Auto-detects: Company, Target Role, Contact Name, Email
+          Supports .csv and .xlsx — Auto-detects Company, Target Role, Contact Name, Email
         </div>
       </div>
 

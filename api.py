@@ -10,6 +10,8 @@ REST API Endpoints:
 from notifier import send_slack_dispatch_alert
 from dispatcher import dispatch_outbound_email
 import os
+import re
+import time
 import uuid
 import json
 from typing import Optional, Literal
@@ -699,33 +701,46 @@ def process_selected_leads(
                 "approval_status": "PENDING",
             }
 
-            try:
-                # Runs upto HITL review gate (interrupt_before=["dispatcher"])
-                sdr_graph.invoke(initial_state, config=thread_config)
-                snapshot = sdr_graph.get_state(thread_config)
-                values = snapshot.values
+            max_attempts = 2
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    # Runs upto HITL review gate (interrupt_before=["dispatcher"])
+                    sdr_graph.invoke(initial_state, config=thread_config)
+                    snapshot = sdr_graph.get_state(thread_config)
+                    values = snapshot.values
 
-                is_disqualified = values.get("icp_fit_score", 0) < 5
-                final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
+                    is_disqualified = values.get("icp_fit_score", 0) < 5
+                    final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
 
-                update_lead_status(
-                    lead_id=lead_id,
-                    status=final_status,
-                    thread_id=thread_id,
-                    research_summary=values.get("research_summary"),
-                    icp_fit_score=values.get("icp_fit_score"),
-                    icp_rationale=values.get("icp_rationale"),
-                    email_draft=values.get("email_draft"),
-                    eval_score=values.get("eval_score"),
-                    eval_verdict=values.get("eval_verdict"),
-                    eval_critique=values.get("eval_critique")
-                )
-            except Exception as e:
-                print(f">> [Batch Error] Lead {lead_id} failed: {e}")
-                update_lead_status(lead_id, status="FAILED")
+                    update_lead_status(
+                        lead_id=lead_id,
+                        status=final_status,
+                        thread_id=thread_id,
+                        research_summary=values.get("research_summary"),
+                        icp_fit_score=values.get("icp_fit_score"),
+                        icp_rationale=values.get("icp_rationale"),
+                        email_draft=values.get("email_draft"),
+                        eval_score=values.get("eval_score"),
+                        eval_verdict=values.get("eval_verdict"),
+                        eval_critique=values.get("eval_critique")
+                    )
+                    break
+                except Exception as e:
+                    err_str = str(e)
+                    is_rate_limit = "429" in err_str or "rate_limit" in err_str.lower()
+                    if is_rate_limit and attempt < max_attempts:
+                        match = re.search(r"try again in ([0-9.]+)", err_str)
+                        retry_delay = (float(match.group(1)) + 1.0) if match else 6.0
+                        print(f">> [Batch 429] Rate limit hit for lead {lead_id}. Waiting {retry_delay:.1f}s before retry...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        print(f">> [Batch Error] Lead {lead_id} failed: {e}")
+                        update_lead_status(lead_id, status="FAILED")
+                        break
             
-            # 2-second rate-limiting throttle between leads to protect Groq TPM
-            time.sleep(2.0)
+            # Rate-limiting throttle between leads to protect Groq TPM
+            time.sleep(4.0)
     background_tasks.add_task(run_batch)
 
     return {

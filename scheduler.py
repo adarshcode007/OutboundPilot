@@ -28,9 +28,11 @@ from graph import build_sdr_graph
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import HumanMessage
 
+import re
+
 # Configuration defaults
 DEFAULT_DRIP_TIME = os.getenv("CRON_DRIP_TIME", "08:00") # HH:MM format (24h)
-DRIP_RATE_LIMIT_DELAY = float(os.getenv("DRIP_RATE_LIMIT_DELAY", "2.0"))
+DRIP_RATE_LIMIT_DELAY = float(os.getenv("DRIP_RATE_LIMIT_DELAY", "5.0"))
 
 class SDRScheduler:
     def __init__(self, target_time: str = DEFAULT_DRIP_TIME):
@@ -197,31 +199,44 @@ class SDRScheduler:
                     "approval_status": "PENDING",
                 }
 
-                try:
-                    graph.invoke(initial_state, config=thread_config)
-                    snapshot = graph.get_state(thread_config)
-                    values = snapshot.values
+                max_attempts = 2
+                for attempt in range(1, max_attempts + 1):
+                    try:
+                        graph.invoke(initial_state, config=thread_config)
+                        snapshot = graph.get_state(thread_config)
+                        values = snapshot.values
 
-                    is_disqualified = values.get("icp_fit_score", 0) < 5
-                    final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
+                        is_disqualified = values.get("icp_fit_score", 0) < 5
+                        final_status = "DISQUALIFIED" if is_disqualified else "DRAFTED"
 
-                    update_lead_status(
-                        lead_id=lead_id,
-                        status=final_status,
-                        thread_id=thread_id,
-                        research_summary=values.get("research_summary"),
-                        icp_fit_score=values.get("icp_fit_score"),
-                        icp_rationale=values.get("icp_rationale"),
-                        email_draft=values.get("email_draft"),
-                        eval_score=values.get("eval_score"),
-                        eval_verdict=values.get("eval_verdict"),
-                        eval_critique=values.get("eval_critique"),
-                    )
-                    processed_count += 1
-                    print(f"    --> [{final_status}] | ICP: {values.get('icp_fit_score')}/10 | AI Judge: {values.get('eval_score')}/10")
-                except Exception as e:
-                    print(f"    --> [Error] Lead {company} failed: {e}")
-                    update_lead_status(lead_id, status="FAILED")
+                        update_lead_status(
+                            lead_id=lead_id,
+                            status=final_status,
+                            thread_id=thread_id,
+                            research_summary=values.get("research_summary"),
+                            icp_fit_score=values.get("icp_fit_score"),
+                            icp_rationale=values.get("icp_rationale"),
+                            email_draft=values.get("email_draft"),
+                            eval_score=values.get("eval_score"),
+                            eval_verdict=values.get("eval_verdict"),
+                            eval_critique=values.get("eval_critique"),
+                        )
+                        processed_count += 1
+                        print(f"    --> [{final_status}] | ICP: {values.get('icp_fit_score')}/10 | AI Judge: {values.get('eval_score')}/10")
+                        break
+                    except Exception as e:
+                        err_str = str(e)
+                        is_rate_limit = "429" in err_str or "rate_limit" in err_str.lower()
+                        if is_rate_limit and attempt < max_attempts:
+                            match = re.search(r"try again in ([0-9.]+)", err_str)
+                            retry_delay = (float(match.group(1)) + 1.0) if match else 6.0
+                            print(f"    --> [Rate-Limit 429] Groq TPM limit. Sleeping {retry_delay:.1f}s before retry...")
+                            await asyncio.sleep(retry_delay)
+                            continue
+                        else:
+                            print(f"    --> [Error] Lead {company} failed: {e}")
+                            update_lead_status(lead_id, status="FAILED")
+                            break
 
                 # Rate-limiting throttle buffer to protect Groq TPM
                 await asyncio.sleep(DRIP_RATE_LIMIT_DELAY)
