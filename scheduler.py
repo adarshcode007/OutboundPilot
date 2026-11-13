@@ -19,6 +19,7 @@ load_dotenv()
 from queue_manager import (
     get_daily_quota_stats,
     list_queued_leads,
+    claim_queued_leads,
     update_lead_status,
     log_scheduler_run,
     has_drip_run_today,
@@ -155,7 +156,7 @@ class SDRScheduler:
                 )
                 return {"status": "SKIPPED", "reason": "Daily quota exhausted", "quota": quota}
 
-            queued = list_queued_leads(status="QUEUED", limit=remaining)
+            queued = claim_queued_leads(limit=remaining)
             if not queued:
                 print(">> [Scheduler] No unexecuted leads in queue.")
                 self.last_run_date = today_str

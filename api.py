@@ -60,6 +60,7 @@ from queue_manager import (
     get_lead_by_thread_id,
     get_daily_quota_stats,
     list_queued_leads,
+    claim_queued_leads,
     get_lead_by_id,
     update_lead_status,
     save_lead_cadence,
@@ -762,7 +763,7 @@ def trigger_daily_cron(background_tasks: BackgroundTasks, current_user: dict = D
             "quota": quota_stats,
         }
     
-    queued_leads = list_queued_leads(status="QUEUED", limit=remaining, user_id=current_user["id"])
+    queued_leads = claim_queued_leads(limit=remaining, user_id=current_user["id"])
     lead_ids = [l["id"] for l in queued_leads]
 
     if not lead_ids:

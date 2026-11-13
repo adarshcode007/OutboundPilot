@@ -247,7 +247,58 @@ def list_queued_leads(status: Optional[str] = None, limit: int = 100, user_id: O
                     lead["processed_at"] = lead["processed_at"].isoformat()
                 leads.append(lead)
             return leads
-        
+
+def claim_queued_leads(limit: int = 10, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Atomically claims unexecuted leads using PostgreSQL row-level locks (FOR UPDATE SKIP LOCKED).
+    
+    Prevents race conditions across multi-worker deployments (e.g. Uvicorn --workers 2+)
+    and ensures no lead is ever processed or emailed twice.
+    """
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            if user_id:
+                subquery = """
+                    SELECT id FROM lead_queue 
+                    WHERE status = 'QUEUED' AND user_id = %s
+                    ORDER BY priority_score DESC, created_at ASC 
+                    LIMIT %s 
+                    FOR UPDATE SKIP LOCKED
+                """
+                params = (user_id, limit)
+            else:
+                subquery = """
+                    SELECT id FROM lead_queue 
+                    WHERE status = 'QUEUED'
+                    ORDER BY priority_score DESC, created_at ASC 
+                    LIMIT %s 
+                    FOR UPDATE SKIP LOCKED
+                """
+                params = (limit,)
+
+            claim_query = f"""
+                UPDATE lead_queue
+                SET status = 'PROCESSING', processed_at = NOW()
+                WHERE id IN ({subquery})
+                RETURNING *;
+            """
+            cur.execute(claim_query, params)
+            colnames = [desc[0] for desc in cur.description]
+            claimed = []
+            for row in cur.fetchall():
+                lead = dict(zip(colnames, row))
+                lead["id"] = str(lead["id"])
+                if isinstance(lead.get("priority_tags"), str):
+                    try:
+                        lead["priority_tags"] = json.loads(lead["priority_tags"])
+                    except Exception:
+                        lead["priority_tags"] = []
+                if lead.get("created_at") and hasattr(lead["created_at"], "isoformat"):
+                    lead["created_at"] = lead["created_at"].isoformat()
+                if lead.get("processed_at") and hasattr(lead["processed_at"], "isoformat"):
+                    lead["processed_at"] = lead["processed_at"].isoformat()
+                claimed.append(lead)
+            return claimed
+
 def get_lead_by_id(lead_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Retrieves full details of a single lead by UUID, optionally verifying user_id."""
     with pool.connection() as conn:
