@@ -1,13 +1,45 @@
 /**
- * Centralized API Client with automatic credentials and silent JWT token refresh.
+ * Centralized API Client with automatic credentials and mutex-locked silent JWT token refresh.
  */
 
 export const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
 
 let onUnauthorizedCallback = null;
+let isRefreshing = false;
+let refreshPromise = null;
 
 export const setOnUnauthorized = (cb) => {
   onUnauthorizedCallback = cb;
+};
+
+/**
+ * Shared in-flight promise mutex to prevent concurrent refresh token rotation races.
+ * If multiple API calls return 401 simultaneously (e.g. on initial page load),
+ * only ONE call triggers /api/auth/refresh. The other requests latch onto the same
+ * promise, waiting for the single rotation to complete before retrying.
+ */
+const silentRefreshToken = async () => {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 };
 
 export const apiFetch = async (url, options = {}) => {
@@ -26,23 +58,13 @@ export const apiFetch = async (url, options = {}) => {
 
   let res = await fetch(finalUrl, opts);
 
-  // If 401 Unauthorized, attempt a silent token refresh
+  // If 401 Unauthorized, queue behind or trigger the single in-flight silent token refresh
   if (res.status === 401 && !url.includes("/api/auth/")) {
-    try {
-      const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (refreshRes.ok) {
-        // Retry original request once with fresh access token cookie
-        res = await fetch(finalUrl, opts);
-      } else {
-        if (onUnauthorizedCallback) {
-          onUnauthorizedCallback();
-        }
-      }
-    } catch (e) {
+    const success = await silentRefreshToken();
+    if (success) {
+      // Retry original request with freshly issued access token cookie
+      res = await fetch(finalUrl, opts);
+    } else {
       if (onUnauthorizedCallback) {
         onUnauthorizedCallback();
       }
@@ -51,4 +73,3 @@ export const apiFetch = async (url, options = {}) => {
 
   return res;
 };
-
