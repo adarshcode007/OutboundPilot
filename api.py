@@ -907,3 +907,13 @@ def get_analytics_endpoint(current_user: dict = Depends(get_current_user)):
 def list_dispatches_endpoint(limit: int = 50, current_user: dict = Depends(get_current_user)):
     """Retrieves immutable audit ledger of dispatched outbound emails for this user."""
     return list_dispatch_ledger(limit=limit, user_id=current_user["id"])
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("api:app", host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("api:app", host="0.0.0.0", port=port)

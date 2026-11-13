@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: outbound-sdr
+    env: python
+    buildCommand: "cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt"
+    startCommand: "uvicorn api:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: NODE_VERSION
+        value: 20.9.0
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "lax"
+      - key: GROQ_MODEL
+        value: "openai/gpt-oss-20b"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: POSTGRES_URI
+        fromDatabase:
+          name: outbound-sdr-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TAVILY_API_KEY
+        sync: false
+
+databases:
+  - name: outbound-sdr-db
+    databaseName: outboundsdr
+    user: sdr_user
+    plan: free
+

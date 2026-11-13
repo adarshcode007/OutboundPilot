@@ -2,7 +2,7 @@
  * Centralized API Client with automatic credentials and mutex-locked silent JWT token refresh.
  */
 
-export const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
+export const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ? import.meta.env.VITE_API_URL : "";
 
 let onUnauthorizedCallback = null;
 let isRefreshing = false;
