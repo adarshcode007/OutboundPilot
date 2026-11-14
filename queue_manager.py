@@ -527,8 +527,8 @@ def get_analytics_summary(user_id: Optional[str] = None) -> Dict[str, Any]:
             evaluated_total = qualified + disqualified
             qualification_rate = round((qualified / evaluated_total * 100), 1) if evaluated_total > 0 else 0.0
 
-            # 2. Token-Saver ROI Economics
-            TOKENS_SAVED_PER_DISQUALIFIED = 6500
+            # 2. Token-Saver ROI Economics (Bypassing Copywriter & Evaluator)
+            TOKENS_SAVED_PER_DISQUALIFIED = 4000
             tokens_saved = disqualified * TOKENS_SAVED_PER_DISQUALIFIED
             free_tier_days_preserved = round(tokens_saved / 100000, 2)
 

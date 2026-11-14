@@ -179,7 +179,7 @@ export default function AnalyticsDashboard() {
             {engagement.positive_replies} Positive ({engagement.total_replies > 0 ? Math.round((engagement.positive_replies / engagement.total_replies) * 100) : 0}%)
           </div>
           <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-2 leading-relaxed">
-            Autonomous Cadence Stopper halted remaining touches.
+            Autonomous sequence halted upon prospect response.
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@ export default function AnalyticsDashboard() {
                 </h3>
               </div>
               <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#F5F5FA] dark:bg-[#161F33] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]">
-                6,500 Tokens / Exit
+                4,000 Tokens / Exit
               </span>
             </div>
 
@@ -232,20 +232,6 @@ export default function AnalyticsDashboard() {
                 </div>
                 <div className="font-mono text-xs font-bold text-[#0B1220] dark:text-[#F8FAFC]">
                   ~{(roi.disqualified_accounts * 2000).toLocaleString()} tok
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-                    3. 3-Touch Follow-Up Cadence Bypass
-                  </div>
-                  <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
-                    Skipped Day 1/3/7 multi-touch follow-up generation
-                  </div>
-                </div>
-                <div className="font-mono text-xs font-bold text-[#0B1220] dark:text-[#F8FAFC]">
-                  ~{(roi.disqualified_accounts * 2500).toLocaleString()} tok
                 </div>
               </div>
             </div>
