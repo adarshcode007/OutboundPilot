@@ -46,7 +46,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   // Batch Queue & Briefing State
   const [activeTab, setActiveTab] = useState("single");
   const [queueLeads, setQueueLeads] = useState([]);
-  const [quotaStats, setQuotaStats] = useState({ daily_limit: 10, used_today: 0, remaining_today: 10 });
+  const [quotaStats, setQuotaStats] = useState({ daily_limit: 20, used_today: 0, remaining_today: 20 });
   const [showBriefing, setShowBriefing] = useState(false);
 
   // Check Auth & Fetch Initial Data on Mount

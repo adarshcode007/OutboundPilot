@@ -20,7 +20,7 @@ load_dotenv()
 
 POSTGRES_URI = (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URI", "postgresql://postgres@localhost:5432/postgres")).strip()
 DATABASE_URL_UNPOOLED = (os.getenv("DATABASE_URL_UNPOOLED") or POSTGRES_URI).strip()
-DAILY_QUOTA_LIMIT = int(os.getenv("DAILY_QUOTA_LIMIT", "10"))
+DAILY_QUOTA_LIMIT = int(os.getenv("DAILY_QUOTA_LIMIT", "20"))
 PG_POOL_MAX_SIZE = int(os.getenv("PG_POOL_MAX_SIZE", "12"))
 
 # Centralized application-wide ConnectionPool singleton shared across API, Auth, and Checkpointer
