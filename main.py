@@ -56,7 +56,7 @@ def run_campaign_interactive(company: str, role: str, name: str, email: str):
     print(f"[*] Target Email: {email}")
 
     # 1. Compile graph with checkpointer and safety gate
-    postgres_uri = os.getenv("POSTGRES_URI", "").strip()
+    postgres_uri = (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URI", "")).strip()
     checkpointer = None
 
     if postgres_uri:

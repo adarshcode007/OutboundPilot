@@ -12,68 +12,18 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  // 3-Touch Cadence State
-  const [cadence, setCadence] = useState(null);
-  const [activeTouchStep, setActiveTouchStep] = useState(1);
-  const [cadenceLoading, setCadenceLoading] = useState(false);
-
   const textareaRef = useRef(null);
   const currentLead = reviewLeads[currentIndex] || null;
 
-  // Fetch stored cadence for the active lead
-  const fetchCadence = async (leadId) => {
-    try {
-      const res = await apiFetch(`/api/leads/${leadId}/cadence`);
-      if (res.ok) {
-        const data = await res.json();
-        setCadence(data.cadence || null);
-        if (data.cadence?.touch_1?.body) {
-          setEditableDraft((prev) => (prev && prev.trim() ? prev : data.cadence.touch_1.body));
-        }
-      } else {
-        setCadence(null);
-      }
-    } catch (e) {
-      setCadence(null);
-    }
-  };
-
-  // Sync draft and cadence when switching cards
+  // Sync draft when switching cards
   useEffect(() => {
     if (currentLead) {
-      const initialDraft = currentLead.email_draft || currentLead.cadence?.touch_1?.body || "";
-      setEditableDraft(initialDraft);
+      setEditableDraft(currentLead.email_draft || "");
       setRecipientEmail(currentLead.contact_email || "");
       setCritique("");
       setNotice(null);
-      setActiveTouchStep(1);
-      fetchCadence(currentLead.id);
     }
   }, [currentIndex, currentLead?.id]);
-
-  // Generate 3-Touch Cadence on-demand
-  const handleGenerateCadence = async () => {
-    if (!currentLead) return;
-    setCadenceLoading(true);
-    setNotice(null);
-
-    try {
-      const res = await apiFetch(`/api/leads/${currentLead.id}/cadence/generate`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to generate cadence");
-      const data = await res.json();
-      setCadence(data.cadence);
-      if (data.cadence?.touch_1?.body) {
-        setEditableDraft(data.cadence.touch_1.body);
-      }
-      setNotice("✓ Successfully generated 3-touch follow-up cadence!");
-    } catch (err) {
-      alert("Cadence generation error: " + err.message);
-    } finally {
-      setCadenceLoading(false);
-    }
-  };
 
   // Keyboard navigation & hotkeys
   useEffect(() => {
@@ -298,50 +248,6 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* 3-Touch Follow-up Cadence Selector */}
-              <div className="p-4 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0E1422]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-1.5">
-                    <span>📅</span>
-                    <span>3-Touch Outbound Cadence</span>
-                  </div>
-                  {!cadence && (
-                    <button
-                      onClick={handleGenerateCadence}
-                      disabled={cadenceLoading}
-                      className="text-xs text-[#3B6BF0] hover:underline font-medium"
-                    >
-                      {cadenceLoading ? "Generating..." : "Generate 3-Touch Follow-ups"}
-                    </button>
-                  )}
-                </div>
-
-                {cadence && (
-                  <div className="flex gap-2 flex-wrap">
-                    {[
-                      { step: 1, label: "Touch 1: Hook (Day 1)", data: cadence.touch_1 },
-                      { step: 2, label: "Touch 2: Value Bump (Day 3)", data: cadence.touch_2 },
-                      { step: 3, label: "Touch 3: Breakup (Day 7)", data: cadence.touch_3 },
-                    ].map((t) => (
-                      <button
-                        key={t.step}
-                        onClick={() => {
-                          setActiveTouchStep(t.step);
-                          if (t.data?.body) setEditableDraft(t.data.body);
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          activeTouchStep === t.step
-                            ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220]"
-                            : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Editable Draft */}

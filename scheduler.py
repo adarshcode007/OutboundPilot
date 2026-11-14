@@ -34,10 +34,12 @@ import re
 # Configuration defaults
 DEFAULT_DRIP_TIME = os.getenv("CRON_DRIP_TIME", "08:00") # HH:MM format (24h)
 DRIP_RATE_LIMIT_DELAY = float(os.getenv("DRIP_RATE_LIMIT_DELAY", "5.0"))
+ENABLE_INTERNAL_CRON = os.getenv("ENABLE_INTERNAL_CRON", "true").strip().lower() in ("true", "1", "yes")
 
 class SDRScheduler:
-    def __init__(self, target_time: str = DEFAULT_DRIP_TIME):
+    def __init__(self, target_time: str = DEFAULT_DRIP_TIME, enabled: bool = ENABLE_INTERNAL_CRON):
         self.target_time = target_time
+        self.enabled = enabled
         self.is_running = False
         self.last_run_date: Optional[str] = None
         self.is_processing = False
@@ -47,11 +49,17 @@ class SDRScheduler:
     def should_run_drip(self) -> bool:
         """
         Evaluates whether the morning drip should execute:
-        1. Check: current_time >= target_time (default "08:00").
-        2. Check PostgreSQL: Has a drip batch been logged for today's date?
-        3. Returns True if time >= 08:00 and today's batch == NOT_RUN.
+        1. In-memory guard: If already completed today, return False (0 DB queries).
+        2. Check: current_time >= target_time (default "08:00").
+        3. Check PostgreSQL: Has a drip batch been logged for today's date?
         """
         now = datetime.datetime.now()
+        today_str = now.date().isoformat()
+
+        # In-memory fast path: prevent repeated database queries for the rest of today
+        if self.last_run_date == today_str:
+            return False
+
         try:
             target_hour, target_minute = map(int, self.target_time.split(":"))
         except Exception:
@@ -66,10 +74,11 @@ class SDRScheduler:
         # 2. Condition: Check PostgreSQL ledger for today's run
         try:
             already_run = has_drip_run_today()
+            if already_run:
+                self.last_run_date = today_str
             return not already_run
         except Exception as e:
             print(f">> [Scheduler] Warning: Error checking PostgreSQL for today's run ({e}). Falling back to in-memory check.")
-            today_str = now.date().isoformat()
             return self.last_run_date != today_str
 
     async def check_and_catchup(self) -> Optional[Dict[str, Any]]:
@@ -111,6 +120,7 @@ class SDRScheduler:
             latest_run = None
 
         return {
+            "internal_cron_enabled": self.enabled,
             "scheduler_enabled": self.is_running,
             "target_time": self.target_time,
             "is_processing": self.is_processing,
@@ -281,7 +291,11 @@ class SDRScheduler:
         print(">> [Scheduler] Daemon stopped.")
 
     def start(self):
-        """Starts the background worker task."""
+        """Starts the background worker task if internal cron is enabled."""
+        if not self.enabled:
+            print(">> [Scheduler] Internal background cron is DISABLED (ENABLE_INTERNAL_CRON=false).")
+            print(">> [Scheduler] Neon scale-to-zero protected. Awaiting external triggers (e.g. /api/scheduler/run-now).")
+            return
         if self.is_running:
             return
         self._task = asyncio.create_task(self._scheduler_loop())

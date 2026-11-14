@@ -141,7 +141,6 @@ def send_slack_reply_alert(
                 {"type": "mrkdwn", "text": f"*Email:*\n{email}"},
                 {"type": "mrkdwn", "text": f"*Sentiment:*\n*{sentiment}*"},
                 {"type": "mrkdwn", "text": f"*Positive Intent:*\n{'✅ YES' if is_pos else '❌ NO'}"},
-                {"type": "mrkdwn", "text": f"*Cadence Status:*\n*HALTED & CANCELLED*"},
             ],
         },
         {

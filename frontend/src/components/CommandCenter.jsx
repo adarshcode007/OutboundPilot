@@ -43,11 +43,6 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
-  // 3-Touch Cadence State
-  const [cadence, setCadence] = useState(null);
-  const [activeTouchStep, setActiveTouchStep] = useState(1);
-  const [cadenceLoading, setCadenceLoading] = useState(false);
-
   // Batch Queue & Briefing State
   const [activeTab, setActiveTab] = useState("single");
   const [queueLeads, setQueueLeads] = useState([]);
@@ -133,9 +128,6 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         if (res.ok) {
           const data = await res.json();
           setCampaignState(data);
-          if (data.cadence) {
-            setCadence(data.cadence);
-          }
           if (data.email_draft && !editableDraft) {
             setEditableDraft(data.email_draft);
           }
@@ -169,8 +161,6 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     setLoading(true);
     setCampaignState(null);
     setEditableDraft("");
-    setCadence(null);
-    setActiveTouchStep(1);
     setStatusNotice(null);
 
     try {
@@ -190,33 +180,6 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
     } catch (err) {
       alert("Campaign launch error: " + err.message);
       setLoading(false);
-    }
-  };
-
-  // Generate 3-Touch Cadence for Single Lead
-  const handleGenerateCadence = async () => {
-    if (!campaignState?.lead_id) return;
-    setCadenceLoading(true);
-    setStatusNotice(null);
-    try {
-      const res = await apiFetch(`/api/leads/${campaignState.lead_id}/cadence/generate`, {
-        method: "POST"
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to generate cadence");
-      }
-      const data = await res.json();
-      setCadence(data.cadence);
-      if (data.cadence?.touch_1?.body) {
-        setEditableDraft(data.cadence.touch_1.body);
-      }
-      setStatusNotice("✓ Successfully generated 3-touch follow-up cadence!");
-      fetchLeads();
-    } catch (err) {
-      alert("Failed to generate cadence: " + err.message);
-    } finally {
-      setCadenceLoading(false);
     }
   };
 
@@ -665,52 +628,6 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                   {statusNotice}
                 </div>
               )}
-
-              {/* 3-Touch Cadence Generator for Single Lead */}
-              <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-1.5">
-                    <span>📅</span>
-                    <span>Multi-Touch Outbound Cadence (3 Steps):</span>
-                  </div>
-                  {!cadence && (
-                    <button
-                      type="button"
-                      className="text-xs text-[#3B6BF0] hover:underline font-medium"
-                      onClick={handleGenerateCadence}
-                      disabled={cadenceLoading || !campaignState?.lead_id}
-                    >
-                      {cadenceLoading ? "Generating Cadence..." : "✨ Generate 3-Touch Cadence"}
-                    </button>
-                  )}
-                </div>
-
-                {cadence && (
-                  <div className="flex gap-2 flex-wrap">
-                    {[
-                      { step: 1, label: "Touch 1 (Day 1: Hook)", data: cadence.touch_1 },
-                      { step: 2, label: "Touch 2 (Day 3: Bump)", data: cadence.touch_2 },
-                      { step: 3, label: "Touch 3 (Day 7: Breakup)", data: cadence.touch_3 },
-                    ].map(t => (
-                      <button
-                        key={t.step}
-                        type="button"
-                        onClick={() => {
-                          setActiveTouchStep(t.step);
-                          if (t.data?.body) setEditableDraft(t.data.body);
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          activeTouchStep === t.step
-                            ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220]"
-                            : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-2">

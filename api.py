@@ -63,15 +63,12 @@ from queue_manager import (
     claim_queued_leads,
     get_lead_by_id,
     update_lead_status,
-    save_lead_cadence,
-    get_lead_cadence,
     record_inbound_reply,
     get_analytics_summary,
     list_dispatch_ledger,
 )
 
 from scheduler import scheduler
-from agents.cadence import generate_outbound_cadence
 from agents.classifier import classify_inbound_reply
 from notifier import send_slack_reply_alert
 
@@ -372,7 +369,7 @@ def start_campaign(
 def get_campaign_state(thread_id: str, current_user: dict = Depends(get_current_user)):
     """Endpoint 2: Fetch campaign state snapshot for the Frontend UI.
     
-    Returns the research brief, ICP score, AI quality seal, email draft, and cadence.
+    Returns the research brief, ICP score, AI quality seal, and email draft.
     """
     thread_config = {"configurable": {"thread_id": thread_id}}
     snapshot = sdr_graph.get_state(thread_config)
@@ -396,7 +393,6 @@ def get_campaign_state(thread_id: str, current_user: dict = Depends(get_current_
                 "eval_verdict": lead.get("eval_verdict"),
                 "eval_critique": lead.get("eval_critique"),
                 "approval_status": lead.get("status"),
-                "cadence": lead.get("cadence"),
             }
         raise HTTPException(status_code=404, detail=f"No campaign found for thread_id '{thread_id}'")
 
@@ -431,7 +427,6 @@ def get_campaign_state(thread_id: str, current_user: dict = Depends(get_current_
         "eval_verdict": snapshot.values.get("eval_verdict"),
         "eval_critique": snapshot.values.get("eval_critique"),
         "approval_status": snapshot.values.get("approval_status"),
-        "cadence": lead.get("cadence") if lead else None,
     }
 
 
@@ -776,9 +771,12 @@ def trigger_daily_cron(background_tasks: BackgroundTasks, current_user: dict = D
 
 @app.on_event("startup")
 async def startup_scheduler():
-    """Starts the background 8:00 AM cron daemon when FastAPI boots."""
+    """Starts the background 8:00 AM cron daemon when FastAPI boots if enabled."""
     scheduler.start()
-    print(">> [FastAPI] Background SDR Scheduler daemon started.")
+    if scheduler.enabled:
+        print(">> [FastAPI] Background SDR Scheduler daemon started.")
+    else:
+        print(">> [FastAPI] Internal cron disabled (ENABLE_INTERNAL_CRON=false). Neon autosuspend/scale-to-zero active.")
 
 @app.on_event("shutdown")
 async def shutdown_scheduler():
@@ -791,9 +789,19 @@ def get_scheduler_status():
     """Returns the live status, schedule time, and next estimated run."""
     return scheduler.get_status()
 
+CRON_SECRET = os.getenv("CRON_SECRET", "").strip()
+
 @app.post('/api/scheduler/run-now')
-async def run_scheduler_now(background_tasks: BackgroundTasks):
+async def run_scheduler_now(
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
     """Force-triggers the autonomous morning drip immediately in the background."""
+    if CRON_SECRET:
+        token = request.headers.get("X-Cron-Secret") or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+        if token != CRON_SECRET:
+            raise HTTPException(status_code=403, detail="Invalid or missing cron secret.")
+
     if scheduler.is_processing:
         return {"status": "BUSY", "message": "Scheduler is already running a drip batch."}
     
@@ -803,37 +811,6 @@ async def run_scheduler_now(background_tasks: BackgroundTasks):
         "message": "Immediate morning drip launched in background.",
     }
 
-
-# Multi-Touch Follow-Up Cadence Endpoints
-@app.post("/api/leads/{lead_id}/cadence/generate")
-def generate_cadence_endpoint(lead_id: str):
-    """Generates an automated 3-touch cadence for a lead using verified research and initial pitch."""
-    lead = get_lead_by_id(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found.")
-    
-    cadence = generate_outbound_cadence(
-        company=lead["company"],
-        contact_name=lead.get("contact_name") or "Decision Maker",
-        role=lead.get("role") or "Executive",
-        research_summary=lead.get("research_summary") or f"{lead['company']} is a target enterprise account.",
-        initial_draft=lead.get("email_draft") or "",
-    )
-
-    save_lead_cadence(lead_id, cadence)
-    return {"status": "SUCCESS", "cadence": cadence}
-
-@app.get("/api/leads/{lead_id}/cadence")
-def get_cadence_enpoint(lead_id: str):
-    """Retrieves the stored 3-touch cadence for a lead."""
-    lead = get_lead_by_id(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found.")
-    
-    cadence = get_lead_cadence(lead_id)
-    if not cadence:
-        raise HTTPException(status_code=404, detail="No cadence generates for this lead yet.")
-    return {"status": "SUCCESS", "cadence": cadence}
 
 # Notification & Webhook Endpoints
 @app.post("/api/notifications/test-slack")
@@ -892,7 +869,6 @@ def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
         "sentiment": analysis["sentiment"],
         "is_positive_intent": analysis["is_positive_intent"],
         "recommended_action": analysis["recommended_action"],
-        "cadence_status": update_result["cadence_status"],
         "notification": slack_res["status"]
     }
 

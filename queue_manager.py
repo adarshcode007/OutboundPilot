@@ -18,7 +18,8 @@ from psycopg_pool import ConnectionPool
 from dotenv import load_dotenv
 load_dotenv()
 
-POSTGRES_URI = os.getenv("POSTGRES_URI", "postgresql://postgres@localhost:5432/postgres")
+POSTGRES_URI = (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URI", "postgresql://postgres@localhost:5432/postgres")).strip()
+DATABASE_URL_UNPOOLED = (os.getenv("DATABASE_URL_UNPOOLED") or POSTGRES_URI).strip()
 DAILY_QUOTA_LIMIT = int(os.getenv("DAILY_QUOTA_LIMIT", "10"))
 PG_POOL_MAX_SIZE = int(os.getenv("PG_POOL_MAX_SIZE", "12"))
 
@@ -54,7 +55,6 @@ def init_queue_schema():
                     processed_at TIMESTAMP WITH TIME ZONE
                 );
 
-                ALTER TABLE lead_queue ADD COLUMN IF NOT EXISTS cadence JSONB;
                 ALTER TABLE lead_queue ADD COLUMN IF NOT EXISTS reply_data JSONB;
                 CREATE TABLE IF NOT EXISTS dispatch_ledger (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -361,30 +361,6 @@ def update_lead_status(
                 )
             )
 
-def save_lead_cadence(lead_id: str, cadence_data: Dict[str,Any]) -> bool:
-    """Stores the generated 3-touch cadence JSON into lead_queue."""
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE lead_queue
-                SET cadence = %s
-                WHERE id = %s
-                """,
-                (json.dumps(cadence_data), lead_id)
-            )
-    return True
-
-def get_lead_cadence(lead_id: str) -> Optional[Dict[str, Any]]:
-    """Retrieves the stored cadence for a lead."""
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT cadence FROM lead_queue WHERE id = %s",(lead_id,))
-            row = cur.fetchone()
-            if row and row[0]:
-                return row[0] if isinstance(row[0], dict) else json.loads(row[0])
-    return None
-
 def log_dispatch_event(
     recipient: str,
     subject: str,
@@ -460,8 +436,7 @@ def record_inbound_reply(
     analysis: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Halts pending automated follow-ups (Touch 2 & Touch 3), transitions
-    lead status to 'REPLIED', and records reply context in PostgreSQL.
+    Transitions lead status to 'REPLIED', and records reply context in PostgreSQL.
     """
     from datetime import datetime, timezone
 
@@ -469,13 +444,6 @@ def record_inbound_reply(
     if not lead:
         return {"status": "ERROR", "detail": "Lead not found"}
 
-    # Fetch and cancel pending cadence touches
-    cadence = get_lead_cadence(lead_id) or {}
-    if "touch_2" in cadence and isinstance(cadence["touch_2"], dict):
-        cadence["touch_2"]["status"] = "CANCELLED"
-    if "touch_3" in cadence and isinstance(cadence["touch_3"], dict):
-        cadence["touch_3"]["status"] = "CANCELLED"
-    
     reply_payload = {
         "received_at": datetime.now(timezone.utc).isoformat(),
         "reply_text": reply_text,
@@ -492,15 +460,13 @@ def record_inbound_reply(
                 """
                 UPDATE lead_queue
                 SET status = 'REPLIED',
-                    cadence = %s,
                     reply_data = %s
                 WHERE id = %s
                 """,
-                (json.dumps(cadence), json.dumps(reply_payload), lead_id)
+                (json.dumps(reply_payload), lead_id)
             )
     return {
         "status": "REPLIED",
-        "cadence_status": "HALTED_AND_CANCELLED",
         "reply_data": reply_payload,
     }
 
