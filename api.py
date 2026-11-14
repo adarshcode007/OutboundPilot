@@ -62,6 +62,7 @@ from queue_manager import (
     list_queued_leads,
     claim_queued_leads,
     get_lead_by_id,
+    get_lead_by_email,
     update_lead_status,
     record_inbound_reply,
     get_analytics_summary,
@@ -831,16 +832,21 @@ def test_slack_notifcation():
     )
 
 class InboundReplyWebhookRequest(BaseModel):
-    lead_id: str
+    lead_id: Optional[str] = None
     reply_text: str
     sender_email: Optional[str] = None
 
 @app.post("/api/webhooks/inbound-reply")
 def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
     """Inbound webhook called when a prospect replies to an outreach email."""
-    lead = get_lead_by_id(payload.lead_id)
+    lead = None
+    if payload.lead_id:
+        lead = get_lead_by_id(payload.lead_id)
+    if not lead and payload.sender_email:
+        lead = get_lead_by_email(payload.sender_email)
+
     if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found.")
+        raise HTTPException(status_code=404, detail="No matching lead found by ID or sender_email.")
 
     # 1. AI Sentiment Analysis
     analysis = classify_inbound_reply(
@@ -848,9 +854,9 @@ def handle_inbound_reply_webhook(payload: InboundReplyWebhookRequest):
         original_pitch=lead.get("email_draft") or "",
     )
 
-    # 2. Database update: Halt cadence & mark REPLIED
+    # 2. Database update: Mark REPLIED and save reply payload
     update_result = record_inbound_reply(
-        lead_id=payload.lead_id,
+        lead_id=lead["id"],
         reply_text=payload.reply_text,
         analysis=analysis,
     )

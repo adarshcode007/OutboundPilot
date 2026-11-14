@@ -321,6 +321,27 @@ def get_lead_by_id(lead_id: str, user_id: Optional[str] = None) -> Optional[Dict
                 result["priority_tags"] = json.loads(result["priority_tags"])
             return result
 
+def get_lead_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Retrieves the most recent lead matching contact_email (case-insensitive)."""
+    clean_email = email.strip().lower()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT * FROM lead_queue 
+                WHERE LOWER(contact_email) = %s 
+                ORDER BY created_at DESC 
+                LIMIT 1;
+            """, (clean_email,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            colnames = [desc[0] for desc in cur.description]
+            result = dict(zip(colnames, row))
+            result["id"] = str(result["id"])
+            if isinstance(result.get("priority_tags"), str):
+                result["priority_tags"] = json.loads(result["priority_tags"])
+            return result
+
 def update_lead_status(
     lead_id: str,
     status: str,
