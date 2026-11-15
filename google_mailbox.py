@@ -67,11 +67,12 @@ def init_mailbox_schema():
         conn.commit()
 
 
-def generate_oauth_state(user_id: str) -> str:
-    """Creates a short-lived signed JWT state token containing user_id to prevent CSRF."""
+def generate_oauth_state(user_id: str, origin: Optional[str] = None) -> str:
+    """Creates a short-lived signed JWT state token containing user_id and origin to prevent CSRF."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     payload = {
         "sub": user_id,
+        "origin": origin,
         "type": "google_oauth_state",
         "exp": expire,
         "iat": datetime.now(timezone.utc),
@@ -79,18 +80,18 @@ def generate_oauth_state(user_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_oauth_state(state: str) -> Optional[str]:
-    """Decodes and validates OAuth state JWT, returning the user_id."""
+def verify_oauth_state(state: str) -> Tuple[Optional[str], Optional[str]]:
+    """Decodes and validates OAuth state JWT, returning (user_id, origin)."""
     try:
         payload = jwt.decode(state, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "google_oauth_state":
-            return None
-        return payload.get("sub")
+            return None, None
+        return payload.get("sub"), payload.get("origin")
     except Exception:
-        return None
+        return None, None
 
 
-def get_google_auth_url(user_id: str) -> str:
+def get_google_auth_url(user_id: str, origin: Optional[str] = None) -> str:
     """Builds the Google OAuth2 consent URL for the user."""
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise ValueError(
@@ -98,14 +99,15 @@ def get_google_auth_url(user_id: str) -> str:
             "GOOGLE_CLIENT_SECRET in your environment or .env file."
         )
 
-    state = generate_oauth_state(user_id)
+    state = generate_oauth_state(user_id, origin=origin)
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
         "scope": " ".join(GOOGLE_SCOPES),
         "access_type": "offline",  # Crucial to receive a refresh token
-        "prompt": "consent",       # Ensures refresh token is always re-issued
+        "prompt": "consent",       # Ensures refresh token and consent checkboxes are always re-issued
+        "include_granted_scopes": "true",
         "state": state,
     }
     return f"{GOOGLE_AUTH_ENDPOINT}?{urllib.parse.urlencode(params)}"

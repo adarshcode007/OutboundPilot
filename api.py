@@ -330,11 +330,20 @@ def get_current_user_profile(current_user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/auth/google/url")
-def get_google_oauth_url_endpoint(current_user: dict = Depends(get_current_user)):
+def get_google_oauth_url_endpoint(request: Request, current_user: dict = Depends(get_current_user)):
     """Returns the Google OAuth2 consent screen authorization URL."""
     from google_mailbox import get_google_auth_url
     try:
-        url = get_google_auth_url(user_id=current_user["id"])
+        # Detect frontend origin (e.g. http://localhost:5173 or http://localhost:8000)
+        origin = request.headers.get("origin")
+        if not origin and request.headers.get("referer"):
+            referer = request.headers.get("referer", "").split("?")[0].rstrip("/")
+            # extract scheme + host
+            import urllib.parse
+            parsed = urllib.parse.urlparse(referer)
+            if parsed.scheme and parsed.netloc:
+                origin = f"{parsed.scheme}://{parsed.netloc}"
+        url = get_google_auth_url(user_id=current_user["id"], origin=origin)
         return {"url": url}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -349,11 +358,12 @@ def google_oauth_callback_endpoint(
 ):
     """
     Handles Google OAuth redirect:
-    1. Validates CSRF state token to recover user_id.
+    1. Validates CSRF state token to recover user_id and return origin.
     2. Exchanges code for tokens.
-    3. Retrieves user's Google email.
-    4. Upserts into user_mailboxes in PostgreSQL.
-    5. Redirects user back to frontend dashboard with status.
+    3. Verifies that 'gmail.send' scope was granted.
+    4. Retrieves user's Google email.
+    5. Upserts into user_mailboxes in PostgreSQL.
+    6. Redirects user back to frontend dashboard with status.
     """
     import urllib.parse
     from fastapi.responses import RedirectResponse
@@ -366,17 +376,19 @@ def google_oauth_callback_endpoint(
         FRONTEND_URL,
     )
 
+    user_id, origin = verify_oauth_state(state) if state else (None, None)
+    target_base = origin or FRONTEND_URL
+
     if error:
-        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote(error)}"
+        redirect_target = f"{target_base}/?mailbox_error={urllib.parse.quote(error)}"
         return RedirectResponse(url=redirect_target, status_code=307)
 
     if not code or not state:
-        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote('Missing authorization code or state')}"
+        redirect_target = f"{target_base}/?mailbox_error={urllib.parse.quote('Missing authorization code or state')}"
         return RedirectResponse(url=redirect_target, status_code=307)
 
-    user_id = verify_oauth_state(state)
     if not user_id:
-        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote('Invalid or expired OAuth state token')}"
+        redirect_target = f"{target_base}/?mailbox_error={urllib.parse.quote('Invalid or expired OAuth state token')}"
         return RedirectResponse(url=redirect_target, status_code=307)
 
     try:
@@ -384,6 +396,17 @@ def google_oauth_callback_endpoint(
         access_token = tokens["access_token"]
         refresh_token = tokens.get("refresh_token")
         expires_in = tokens.get("expires_in", 3600)
+        granted_scope = tokens.get("scope", "")
+
+        # Crucial security check: Ensure the user actually checked the checkbox for Gmail send permission
+        if "gmail.send" not in granted_scope:
+            error_msg = (
+                "Permission Missing: You did not grant 'Send email on your behalf' permission. "
+                "Please reconnect and check the box next to 'Send email on your behalf' on Google's consent screen."
+            )
+            redirect_target = f"{target_base}/?mailbox_error={urllib.parse.quote(error_msg)}"
+            return RedirectResponse(url=redirect_target, status_code=307)
+
         email = fetch_google_user_email(access_token)
 
         if not refresh_token:
@@ -411,7 +434,11 @@ def google_oauth_callback_endpoint(
             provider="GOOGLE",
         )
 
-        redirect_target = f"{FRONTEND_URL}/?mailbox_connected=true&email={urllib.parse.quote(email)}"
+        redirect_target = f"{target_base}/?mailbox_connected=true&email={urllib.parse.quote(email)}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+    except Exception as e:
+        print(f">> [OAUTH CALLBACK ERROR] {e}")
+        redirect_target = f"{target_base}/?mailbox_error={urllib.parse.quote(str(e))}"
         return RedirectResponse(url=redirect_target, status_code=307)
     except Exception as e:
         print(f">> [OAUTH CALLBACK ERROR] {e}")
@@ -665,6 +692,9 @@ def submit_human_action(
             sdr_graph.update_state(thread_config, state_updates)
             final_state = sdr_graph.invoke(None, config=thread_config)
             receipt = final_state["messages"][-1].content if final_state["messages"] else "Dispatched."
+            if "DISPATCH_FAILED" in receipt or "DISPATCH_BLOCKED" in receipt:
+                clean_err = receipt.replace("[Dispatcher]: Outbound campaign executed.\n", "").strip()
+                raise HTTPException(status_code=400, detail=f"Dispatch failed: {clean_err}")
         else:
             # Direct dispatch via production outbound dispatcher
             receipt_info = dispatch_outbound_email(

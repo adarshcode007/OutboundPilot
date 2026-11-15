@@ -233,8 +233,11 @@ def send_outbound_email(to_email: str, subject: str, body: str, user_id: Optiona
     """
     result = dispatch_outbound_email(to_email=to_email, subject=subject, body=body, user_id=user_id)
 
-    if result["status"] == "BLOCKED":
-        return f"DISPATCH_BLOCKED: {result['detail']}"
+    if result.get("status") == "BLOCKED":
+        return f"DISPATCH_BLOCKED: {result.get('detail') or result.get('error_message')}"
+    
+    if result.get("status") in ["FAILED", "BOUNCED"]:
+        return f"DISPATCH_FAILED: {result.get('error_message') or 'Email delivery failed'}"
     
     return (
         f"SUCCESS: Email delivered to '{to_email}' via {result['provider']} "
