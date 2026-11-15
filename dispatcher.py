@@ -134,6 +134,7 @@ def dispatch_outbound_email(
         except Exception as e:
             print(f">> [DISPATCHER] Google mailbox check skipped: {e}")
 
+    gmail_dispatched = False
     if gmail_token_and_email:
         access_token, sender_email = gmail_token_and_email
         gmail_res = send_email_via_gmail_api(
@@ -143,81 +144,86 @@ def dispatch_outbound_email(
             subject=subject,
             body=body,
         )
-        provider = "GOOGLE_GMAIL"
-        status = gmail_res.get("status", "DELIVERED")
-        message_id = gmail_res.get("message_id") or f"msg_{uuid.uuid4().hex[:12]}"
-        error_message = gmail_res.get("error_message")
+        if gmail_res.get("status") == "DELIVERED":
+            provider = "GOOGLE_GMAIL"
+            status = "DELIVERED"
+            message_id = gmail_res.get("message_id") or f"msg_{uuid.uuid4().hex[:12]}"
+            error_message = None
+            gmail_dispatched = True
+        else:
+            print(f">> [DISPATCHER] Google API failed ({gmail_res.get('error_message')}). Falling back to SMTP/Sandbox...")
 
-    # Case A: Resend API configured
-    elif RESEND_API_KEY:
-        try:
-            provider = "RESEND"
-            res = httpx.post("https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": FROM_EMAIL,
-                "to": [to_email],
-                "subject": subject,
-                "text": body,
-                "headers": {
-                    "List-Unsubscribe": f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>",
-                    "Auto-Submitted": "auto-generated",
+    if not gmail_dispatched:
+        # Case A: Resend API configured
+        if RESEND_API_KEY:
+            try:
+                provider = "RESEND"
+                res = httpx.post("https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json",
                 },
-            }, timeout=10.0)
-            if res.status_code in [200, 201]:
-                data = res.json()
-                message_id = data.get("id", message_id)
-            else:
+                json={
+                    "from": FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": subject,
+                    "text": body,
+                    "headers": {
+                        "List-Unsubscribe": f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>",
+                        "Auto-Submitted": "auto-generated",
+                    },
+                }, timeout=10.0)
+                if res.status_code in [200, 201]:
+                    data = res.json()
+                    message_id = data.get("id", message_id)
+                else:
+                    status = "FAILED"
+                    error_message = f"Resend API error {res.status_code}: {res.text}"
+            except Exception as e:
                 status = "FAILED"
-                error_message = f"Resend API error {res.status_code}: {res.text}"
-        except Exception as e:
-            status = "FAILED"
-            error_message = str(e)
-    
-    # Case B: SMTP configured
-    elif SMTP_HOST:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
+                error_message = str(e)
+        
+        # Case B: SMTP configured
+        elif SMTP_HOST:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
 
-        try:
-            provider = "SMTP"
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = FROM_EMAIL
-            msg["To"] = to_email
-            msg["List-Unsubscribe"] = f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>"
-            msg["Auto-Submitted"] = "auto-generated"
-            msg.attach(MIMEText(body, "plain"))
+            try:
+                provider = "SMTP"
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = FROM_EMAIL
+                msg["To"] = to_email
+                msg["List-Unsubscribe"] = f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>"
+                msg["Auto-Submitted"] = "auto-generated"
+                msg.attach(MIMEText(body, "plain"))
 
-            # Fallback to FROM_EMAIL if SMTP_USER was left as placeholder
-            effective_user = SMTP_USER if (SMTP_USER and SMTP_USER != "your_email@gmail.com") else FROM_EMAIL
+                # Fallback to FROM_EMAIL if SMTP_USER was left as placeholder
+                effective_user = SMTP_USER if (SMTP_USER and SMTP_USER != "your_email@gmail.com") else FROM_EMAIL
 
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=12.0) as server:
-                server.starttls()
-                if effective_user and SMTP_PASS:
-                    server.login(effective_user, SMTP_PASS)
-                server.send_message(msg)
-        except smtplib.SMTPRecipientsRefused as e:
-            status = "BOUNCED"
-            error_message = f"Mailbox does not exist (SMTP 550 Refused): {e.recipients}"
-        except smtplib.SMTPAuthenticationError as e:
-            status = "FAILED"
-            error_message = f"Google SMTP Authentication failed: Check your App Password in .env ({e})"
-        except smtplib.SMTPException as e:
-            status = "FAILED"
-            error_message = f"SMTP Transmission error: {e}"
-        except Exception as e:
-            status = "FAILED"
-            error_message = str(e)
-    # Case C: Sandbox Fallback (Safe Dev/Test Simulation)
-    else:
-        provider = "SANDBOX"
-        message_id = f"sbx_{uuid.uuid4().hex[:12]}"
-        status = "DELIVERED"
+                with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=12.0) as server:
+                    server.starttls()
+                    if effective_user and SMTP_PASS:
+                        server.login(effective_user, SMTP_PASS)
+                    server.send_message(msg)
+            except smtplib.SMTPRecipientsRefused as e:
+                status = "BOUNCED"
+                error_message = f"Mailbox does not exist (SMTP 550 Refused): {e.recipients}"
+            except smtplib.SMTPAuthenticationError as e:
+                status = "FAILED"
+                error_message = f"Google SMTP Authentication failed: Check your App Password in .env ({e})"
+            except smtplib.SMTPException as e:
+                status = "FAILED"
+                error_message = f"SMTP Transmission error: {e}"
+            except Exception as e:
+                status = "FAILED"
+                error_message = str(e)
+        # Case C: Sandbox Fallback (Safe Dev/Test Simulation)
+        else:
+            provider = "SANDBOX"
+            message_id = f"sbx_{uuid.uuid4().hex[:12]}"
+            status = "DELIVERED"
     
     # 3. Log into PostgreSQL Dispatch Ledger
     ledger_id = log_dispatch_event(
