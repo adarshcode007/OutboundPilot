@@ -253,6 +253,7 @@ def dispatch_outbound_email(
         "provider": provider,
         "message_id": message_id,
         "ledger_id": ledger_id,
+        "error_message": error_message,
         "detail": error_message or f"successfully dispatched via {provider} with RFC deliverability headers.",
     }
         

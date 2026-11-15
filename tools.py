@@ -237,7 +237,8 @@ def send_outbound_email(to_email: str, subject: str, body: str, user_id: Optiona
         return f"DISPATCH_BLOCKED: {result.get('detail') or result.get('error_message')}"
     
     if result.get("status") in ["FAILED", "BOUNCED"]:
-        return f"DISPATCH_FAILED: {result.get('error_message') or 'Email delivery failed'}"
+        err_msg = result.get("error_message") or result.get("detail") or "Email delivery failed"
+        return f"DISPATCH_FAILED: {err_msg}"
     
     return (
         f"SUCCESS: Email delivered to '{to_email}' via {result['provider']} "
