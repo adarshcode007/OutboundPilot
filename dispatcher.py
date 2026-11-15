@@ -125,8 +125,31 @@ def dispatch_outbound_email(
     status = "DELIVERED"
     error_message = None
 
+    # Case 0: User has an authenticated Google Workspace / Gmail account
+    gmail_token_and_email = None
+    if user_id:
+        try:
+            from google_mailbox import get_valid_google_access_token, send_email_via_gmail_api
+            gmail_token_and_email = get_valid_google_access_token(user_id)
+        except Exception as e:
+            print(f">> [DISPATCHER] Google mailbox check skipped: {e}")
+
+    if gmail_token_and_email:
+        access_token, sender_email = gmail_token_and_email
+        gmail_res = send_email_via_gmail_api(
+            access_token=access_token,
+            sender_email=sender_email,
+            to_email=to_email,
+            subject=subject,
+            body=body,
+        )
+        provider = "GOOGLE_GMAIL"
+        status = gmail_res.get("status", "DELIVERED")
+        message_id = gmail_res.get("message_id") or f"msg_{uuid.uuid4().hex[:12]}"
+        error_message = gmail_res.get("error_message")
+
     # Case A: Resend API configured
-    if RESEND_API_KEY:
+    elif RESEND_API_KEY:
         try:
             provider = "RESEND"
             res = httpx.post("https://api.resend.com/emails",

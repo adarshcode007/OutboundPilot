@@ -7,6 +7,7 @@ import LeadTable from './LeadTable';
 import MorningBriefing from './MorningBriefing';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AuthModal from './AuthModal';
+import MailboxModal from './MailboxModal';
 import ThemeToggle from './ThemeToggle';
 
 export default function CommandCenter({ onNavigate, selectedPreset }) {
@@ -49,6 +50,12 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [quotaStats, setQuotaStats] = useState({ daily_limit: 20, used_today: 0, remaining_today: 20 });
   const [showBriefing, setShowBriefing] = useState(false);
 
+  // Mailbox Connection State (Google Workspace OAuth)
+  const [mailboxInfo, setMailboxInfo] = useState({ connected: false, email: null, provider: 'NONE' });
+  const [showMailboxModal, setShowMailboxModal] = useState(false);
+  const [mailboxConfigError, setMailboxConfigError] = useState(false);
+  const [mailboxNotice, setMailboxNotice] = useState(null);
+
   // Check Auth & Fetch Initial Data on Mount
   useEffect(() => {
     setOnUnauthorized(() => {
@@ -56,7 +63,70 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       setShowAuthModal(true);
     });
     checkAuth();
+
+    // Check URL parameters for OAuth redirect status
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("mailbox_connected") === "true") {
+      const connectedEmail = params.get("email");
+      setMailboxNotice({
+        type: "success",
+        text: `🎉 Successfully connected Google Workspace account: ${connectedEmail || 'your email'}! All outbound emails will now dispatch natively from your domain.`
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchMailboxStatus();
+    } else if (params.get("mailbox_error")) {
+      const errorMsg = decodeURIComponent(params.get("mailbox_error"));
+      setMailboxNotice({
+        type: "error",
+        text: `Mailbox connection failed: ${errorMsg}`
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  const fetchMailboxStatus = async () => {
+    try {
+      const res = await apiFetch("/api/mailbox");
+      if (res.ok) {
+        const data = await res.json();
+        setMailboxInfo(data);
+      }
+    } catch (e) {
+      console.warn("Could not fetch mailbox status:", e);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const res = await apiFetch("/api/auth/google/url");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        setMailboxConfigError(true);
+        setShowMailboxModal(true);
+      }
+    } catch (e) {
+      setMailboxConfigError(true);
+      setShowMailboxModal(true);
+    }
+  };
+
+  const handleDisconnectMailbox = async () => {
+    try {
+      await apiFetch("/api/mailbox", { method: "DELETE" });
+      await fetchMailboxStatus();
+      setShowMailboxModal(false);
+      setMailboxNotice({
+        type: "info",
+        text: "Outbound mailbox disconnected. Reverted to standard system delivery."
+      });
+    } catch (e) {
+      console.error("Disconnect error:", e);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -67,6 +137,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         if (data.quota) setQuotaStats(data.quota);
         fetchHistory();
         fetchLeads();
+        fetchMailboxStatus();
       } else {
         setShowAuthModal(true);
       }
@@ -265,6 +336,37 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           {/* Theme Toggle Button */}
           <ThemeToggle />
 
+          {/* Mailbox Status / Connect Google Button */}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => { setMailboxConfigError(false); setShowMailboxModal(true); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all shadow-xs ${
+                mailboxInfo.connected
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300"
+                  : "bg-white dark:bg-[#111827] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-gray-400 dark:hover:border-gray-600"
+              }`}
+              title={mailboxInfo.connected ? `Connected: ${mailboxInfo.email}` : "Click to connect your Google Workspace / Gmail"}
+            >
+              {mailboxInfo.connected ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="truncate max-w-[120px] font-semibold">{mailboxInfo.email}</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 text-[#3B6BF0] fill-current" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Connect Mailbox</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* User Profile Pill / Auth Actions */}
           {currentUser ? (
             <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB] dark:border-[#1E293B]">
@@ -360,6 +462,29 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
         {/* Main Interactive Workspace Canvas */}
         <main className="flex-1 p-6 md:p-8 space-y-6 max-w-5xl overflow-y-auto">
+          {/* Mailbox Notification Banner */}
+          {mailboxNotice && (
+            <div className={`p-4 rounded-xl flex items-center justify-between text-xs font-medium border transition-all ${
+              mailboxNotice.type === "success"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                : mailboxNotice.type === "error"
+                ? "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                : "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+            }`}>
+              <div className="flex items-center gap-2">
+                <span>{mailboxNotice.type === "success" ? "📬" : mailboxNotice.type === "error" ? "⚠️" : "ℹ️"}</span>
+                <span>{mailboxNotice.text}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMailboxNotice(null)}
+                className="opacity-70 hover:opacity-100 p-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue vs Analytics */}
           <div className="flex gap-2 border-b border-[#E5E7EB] dark:border-[#1E293B] pb-3">
             <button
@@ -664,6 +789,34 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 </div>
               </div>
 
+              {/* Dispatch Sender Preview */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-3.5 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#6B7280] dark:text-[#94A3B8]">📤 Sender:</span>
+                  {mailboxInfo?.connected ? (
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      {mailboxInfo.email} (Google Workspace)
+                    </span>
+                  ) : (
+                    <span className="text-[#6B7280] dark:text-[#94A3B8]">
+                      System Default / Sandbox (
+                      <button
+                        type="button"
+                        onClick={() => { setMailboxConfigError(false); setShowMailboxModal(true); }}
+                        className="text-[#3B6BF0] underline hover:opacity-80 font-medium"
+                      >
+                        Connect your Google domain
+                      </button>
+                      )
+                    </span>
+                  )}
+                </div>
+                <div className="font-mono text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
+                  To: {campaignState?.target_contact_email || email}
+                </div>
+              </div>
+
               {/* Action Controls */}
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -720,6 +873,16 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           if (currentUser) setShowAuthModal(false);
         }}
         onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* Google Workspace / Gmail Mailbox Modal */}
+      <MailboxModal
+        isOpen={showMailboxModal}
+        onClose={() => setShowMailboxModal(false)}
+        mailboxInfo={mailboxInfo}
+        onDisconnect={handleDisconnectMailbox}
+        onConnect={handleConnectGoogle}
+        configError={mailboxConfigError}
       />
     </div>
   );

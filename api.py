@@ -79,11 +79,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Initialize PostgreSQL Lead Queue and Auth tables
+# Initialize PostgreSQL Lead Queue, Auth, and Mailbox tables
 try:
     init_queue_schema()
     init_auth_schema()
-    print(">> [API] Initialized PostgreSQL lead_queue and auth schemas.")
+    from google_mailbox import init_mailbox_schema
+    init_mailbox_schema()
+    print(">> [API] Initialized PostgreSQL lead_queue, auth, and user_mailboxes schemas.")
 except Exception as e:
     print(f">> [API] Failed to initialize database schemas ({e}).")
 
@@ -274,6 +276,121 @@ def get_current_user_profile(current_user: dict = Depends(get_current_user)):
 
 
 # ---------------------------------------------------------------------------
+# Google Workspace / Gmail OAuth2 Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/auth/google/url")
+def get_google_oauth_url_endpoint(current_user: dict = Depends(get_current_user)):
+    """Returns the Google OAuth2 consent screen authorization URL."""
+    from google_mailbox import get_google_auth_url
+    try:
+        url = get_google_auth_url(user_id=current_user["id"])
+        return {"url": url}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate Google auth URL: {e}")
+
+@app.get("/api/auth/google/callback")
+def google_oauth_callback_endpoint(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """
+    Handles Google OAuth redirect:
+    1. Validates CSRF state token to recover user_id.
+    2. Exchanges code for tokens.
+    3. Retrieves user's Google email.
+    4. Upserts into user_mailboxes in PostgreSQL.
+    5. Redirects user back to frontend dashboard with status.
+    """
+    import urllib.parse
+    from fastapi.responses import RedirectResponse
+    from google_mailbox import (
+        verify_oauth_state,
+        exchange_code_for_tokens,
+        fetch_google_user_email,
+        save_user_mailbox,
+        get_user_mailbox,
+        FRONTEND_URL,
+    )
+
+    if error:
+        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote(error)}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+
+    if not code or not state:
+        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote('Missing authorization code or state')}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+
+    user_id = verify_oauth_state(state)
+    if not user_id:
+        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote('Invalid or expired OAuth state token')}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+
+    try:
+        tokens = exchange_code_for_tokens(code)
+        access_token = tokens["access_token"]
+        refresh_token = tokens.get("refresh_token")
+        expires_in = tokens.get("expires_in", 3600)
+        email = fetch_google_user_email(access_token)
+
+        if not refresh_token:
+            # Fallback to existing refresh token if Google re-authenticated without prompt
+            existing = get_user_mailbox(user_id, provider="GOOGLE")
+            if existing:
+                with pool.connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT refresh_token FROM user_mailboxes WHERE user_id = %s AND provider = 'GOOGLE'",
+                            (user_id,)
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            refresh_token = row[0]
+            if not refresh_token:
+                raise RuntimeError("Google did not return a refresh token. Re-authorization with prompt=consent required.")
+
+        save_user_mailbox(
+            user_id=user_id,
+            email=email,
+            refresh_token=refresh_token,
+            access_token=access_token,
+            expires_in=expires_in,
+            provider="GOOGLE",
+        )
+
+        redirect_target = f"{FRONTEND_URL}/?mailbox_connected=true&email={urllib.parse.quote(email)}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+    except Exception as e:
+        print(f">> [OAUTH CALLBACK ERROR] {e}")
+        redirect_target = f"{FRONTEND_URL}/?mailbox_error={urllib.parse.quote(str(e))}"
+        return RedirectResponse(url=redirect_target, status_code=307)
+
+@app.get("/api/mailbox")
+def get_current_user_mailbox(current_user: dict = Depends(get_current_user)):
+    """Returns the authenticated user's connected mailbox status."""
+    from google_mailbox import get_user_mailbox
+    mailbox = get_user_mailbox(user_id=current_user["id"], provider="GOOGLE")
+    if not mailbox:
+        return {"connected": False, "provider": "NONE", "email": None}
+    return {
+        "connected": True,
+        "provider": mailbox["provider"],
+        "email": mailbox["email"],
+        "connected_at": mailbox["created_at"],
+    }
+
+@app.delete("/api/mailbox")
+def disconnect_current_user_mailbox(current_user: dict = Depends(get_current_user)):
+    """Disconnects and removes the user's connected mailbox."""
+    from google_mailbox import delete_user_mailbox
+    deleted = delete_user_mailbox(user_id=current_user["id"], provider="GOOGLE")
+    return {"status": "DISCONNECTED", "success": deleted}
+
+
+# ---------------------------------------------------------------------------
 # Campaign & Lead Ingestion Endpoints (Scoped to Current User)
 # ---------------------------------------------------------------------------
 
@@ -327,6 +444,7 @@ def start_campaign(
         "email_draft": "",
         "next_step": "researcher",
         "approval_status": "PENDING",
+        "user_id": current_user["id"],
     }
 
     # Execute graph up to the interrupt_before=["dispatcher"] gate
@@ -489,7 +607,11 @@ def submit_human_action(
             )
 
         if has_graph_state:
-            state_updates = {"email_draft": final_draft, "target_contact_email": to_email}
+            state_updates = {
+                "email_draft": final_draft,
+                "target_contact_email": to_email,
+                "user_id": current_user["id"],
+            }
             sdr_graph.update_state(thread_config, state_updates)
             final_state = sdr_graph.invoke(None, config=thread_config)
             receipt = final_state["messages"][-1].content if final_state["messages"] else "Dispatched."

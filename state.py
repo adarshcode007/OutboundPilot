@@ -47,4 +47,7 @@ class MultiAgentSDRState(TypedDict):
     eval_critique: str                    # Judge feedback
     eval_attempts: int                    # Loop counter to prevent infinite revision loops
 
+    # Multi-tenant user ownership
+    user_id: Optional[str]
+
 

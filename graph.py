@@ -46,7 +46,8 @@ def dispatcher_node(state: MultiAgentSDRState) -> dict:
     dispatch_receipt = send_outbound_email.invoke({
         "to_email": to_email,
         "subject": subject,
-        "body": body
+        "body": body,
+        "user_id": state.get("user_id"),
     })
 
     return {

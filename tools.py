@@ -216,7 +216,7 @@ def fetch_company_tech_and_hiring(company_name: str) -> str:
     return tech_info
 
 @tool
-def send_outbound_email(to_email: str, subject: str, body: str) -> str:
+def send_outbound_email(to_email: str, subject: str, body: str, user_id: Optional[str] = None) -> str:
     """Send an outbound email to a prospective enterprise contact.
     
     CRITICAL: This tool executes a live side-effect. In the graph topology, this tool
@@ -226,11 +226,12 @@ def send_outbound_email(to_email: str, subject: str, body: str) -> str:
         to_email: Verified recipient email address.
         subject: Concise, compelling email subject line.
         body: The tailored 3-paragraph executive proposal.
+        user_id: Optional authenticated user ID to route dispatch through their connected mailbox.
         
     Returns:
         Delivery confirmation status and message dispatch ID.
     """
-    result = dispatch_outbound_email(to_email=to_email, subject=subject, body=body)
+    result = dispatch_outbound_email(to_email=to_email, subject=subject, body=body, user_id=user_id)
 
     if result["status"] == "BLOCKED":
         return f"DISPATCH_BLOCKED: {result['detail']}"
