@@ -118,6 +118,30 @@ def get_privacy_policy():
 </html>"""
     return "<h1>Privacy Policy</h1><p>Contact adarshh7373@gmail.com for inquiries.</p>"
 
+@app.get("/terms", response_class=HTMLResponse)
+def get_terms_of_service():
+    """Serves the Google-compliant public Terms of Service."""
+    if os.path.exists("TERMS.md"):
+        with open("TERMS.md", "r", encoding="utf-8") as f:
+            content = f.read()
+        return f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Terms of Service - Outbound Pilot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1F2937; }}
+    pre {{ white-space: pre-wrap; font-family: inherit; }}
+    h1, h2, h3 {{ color: #111827; }}
+  </style>
+</head>
+<body>
+  <pre>{content}</pre>
+</body>
+</html>"""
+    return "<h1>Terms of Service</h1><p>Contact adarshh7373@gmail.com for inquiries.</p>"
+
 # Enable CORS with credentials for frontend applications (React, Next.js, Vite)
 app.add_middleware(
     CORSMiddleware,
