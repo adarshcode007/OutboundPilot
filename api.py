@@ -48,7 +48,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from graph import build_sdr_graph
 from config import get_llm
-from agents.copywriter import COPYWRITER_SYSTEM_PROMPT
+from agents.copywriter import COPYWRITER_SYSTEM_PROMPT, build_copywriter_system_prompt
 from agents.evaluator import evaluate_email_draft
 
 import time
@@ -79,13 +79,22 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Initialize PostgreSQL Lead Queue, Auth, and Mailbox tables
+# Initialize PostgreSQL Lead Queue, Auth, Mailbox, and Campaign Profile tables
 try:
     init_queue_schema()
     init_auth_schema()
     from google_mailbox import init_mailbox_schema
     init_mailbox_schema()
-    print(">> [API] Initialized PostgreSQL lead_queue, auth, and user_mailboxes schemas.")
+    from campaign_profile import (
+        init_campaign_profile_schema,
+        get_user_campaign_profile,
+        save_user_campaign_profile,
+        PRESET_PROFILES,
+        DEFAULT_OFFER_PROFILE,
+        CampaignProfileUpdateRequest,
+    )
+    init_campaign_profile_schema()
+    print(">> [API] Initialized PostgreSQL lead_queue, auth, user_mailboxes, and user_campaign_profiles schemas.")
 except Exception as e:
     print(f">> [API] Failed to initialize database schemas ({e}).")
 
@@ -468,6 +477,34 @@ def disconnect_current_user_mailbox(current_user: dict = Depends(get_current_use
 
 
 # ---------------------------------------------------------------------------
+# Campaign Profile & Offer Studio Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/profile/campaign")
+def get_campaign_profile_endpoint(current_user: dict = Depends(get_current_user)):
+    """Fetches the authenticated user's active offer/job-seeker profile and available presets."""
+    profile = get_user_campaign_profile(current_user["id"])
+    return {
+        "profile": profile,
+        "presets": PRESET_PROFILES,
+        "default": DEFAULT_OFFER_PROFILE,
+    }
+
+@app.put("/api/profile/campaign")
+def update_campaign_profile_endpoint(
+    payload: CampaignProfileUpdateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Updates the user's active campaign profile in PostgreSQL."""
+    updated = save_user_campaign_profile(current_user["id"], payload.dict())
+    return {
+        "status": "SAVED",
+        "profile": updated,
+        "message": "Campaign profile updated successfully. All future multi-agent runs will adapt to this offer.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Campaign & Lead Ingestion Endpoints (Scoped to Current User)
 # ---------------------------------------------------------------------------
 
@@ -509,6 +546,8 @@ def start_campaign(
     # 2. Insert into lead_queue table with user_id
     lead_id = insert_single_lead(scored_lead, thread_id=thread_id, status="PROCESSING", user_id=current_user["id"])
 
+    offer_ctx = get_user_campaign_profile(current_user["id"])
+
     initial_state = {
         "messages": [HumanMessage(content=f"Launch outbound campaign for {payload.contact_name} at {payload.company}")],
         "target_company": payload.company,
@@ -522,6 +561,7 @@ def start_campaign(
         "next_step": "researcher",
         "approval_status": "PENDING",
         "user_id": current_user["id"],
+        "offer_context": offer_ctx,
     }
 
     # Execute graph up to the interrupt_before=["dispatcher"] gate
@@ -623,6 +663,7 @@ def get_campaign_state(thread_id: str, current_user: dict = Depends(get_current_
         "eval_verdict": snapshot.values.get("eval_verdict"),
         "eval_critique": snapshot.values.get("eval_critique"),
         "approval_status": snapshot.values.get("approval_status"),
+        "offer_context": snapshot.values.get("offer_context"),
     }
 
 
@@ -734,25 +775,28 @@ def submit_human_action(
         if not payload.critique or not payload.critique.strip():
             raise HTTPException(status_code=400, detail="Critique instructions are required for REDRAFT action")
 
-        # Invoke Copywriter with human critique
+        # Invoke Copywriter with human critique and user offer context
+        offer_ctx = (snapshot.values.get("offer_context") if has_graph_state else None) or get_user_campaign_profile(current_user["id"])
+        system_prompt = build_copywriter_system_prompt(offer_ctx)
+
         llm = get_llm(temperature=0.3)
         revision_prompt = f"""Target Company: {company}
 Current Draft:
 {current_draft}
 
-Sales Manager Critique:
+Human Review Critique:
 {payload.critique}
 
-Rewrite the 3-paragraph executive cold outreach email incorporating the manager's critique:"""
+Rewrite the structured cold outreach email incorporating the critique and keeping the 3-paragraph blank-line format:"""
 
         new_draft_resp = llm.invoke([
-            SystemMessage(content=COPYWRITER_SYSTEM_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=revision_prompt),
         ])
         new_draft = new_draft_resp.content.strip()
 
         # Run automated judge on the revised draft
-        eval_result = evaluate_email_draft(research, new_draft)
+        eval_result = evaluate_email_draft(research, new_draft, offer_ctx)
 
         # Update state in PostgreSQL checkpointer if graph exists
         if has_graph_state:
@@ -874,6 +918,8 @@ def process_selected_leads(
     if len(payload.lead_ids) > remaining:
         raise HTTPException(status_code=429, detail=f"Requested {len(payload.lead_ids)} leads, but only {remaining} remaining in today's quota ({quota_stats['daily_limit']} max/day).")
     
+    offer_ctx = get_user_campaign_profile(current_user["id"])
+    
     def run_batch():
         for lead_id in payload.lead_ids:
             lead = get_lead_by_id(lead_id, user_id=current_user["id"])
@@ -896,6 +942,8 @@ def process_selected_leads(
                 "email_draft": "",
                 "next_step": "researcher",
                 "approval_status": "PENDING",
+                "user_id": current_user["id"],
+                "offer_context": offer_ctx,
             }
 
             max_attempts = 2

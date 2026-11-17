@@ -28,6 +28,7 @@ from queue_manager import (
 from graph import build_sdr_graph
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import HumanMessage
+from campaign_profile import get_user_campaign_profile
 
 import re
 
@@ -196,6 +197,9 @@ class SDRScheduler:
                 thread_id = f"cron_{lead_id[:8]}"
                 thread_config = {"configurable": {"thread_id": thread_id}}
 
+                lead_user_id = lead.get("user_id")
+                offer_ctx = get_user_campaign_profile(lead_user_id) if lead_user_id else None
+
                 initial_state = {
                     "messages": [HumanMessage(content=f"Launch morning outreach for {lead.get('contact_name', 'Contact')} at {company}")],
                     "target_company": company,
@@ -208,6 +212,8 @@ class SDRScheduler:
                     "email_draft": "",
                     "next_step": "researcher",
                     "approval_status": "PENDING",
+                    "user_id": lead_user_id,
+                    "offer_context": offer_ctx,
                 }
 
                 max_attempts = 2

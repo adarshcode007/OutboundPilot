@@ -50,4 +50,7 @@ class MultiAgentSDRState(TypedDict):
     # Multi-tenant user ownership
     user_id: Optional[str]
 
+    # Dynamic Campaign Profile / Offer Context (Populated from User Settings)
+    offer_context: Optional[dict]
+
 

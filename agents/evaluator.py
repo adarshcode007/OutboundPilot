@@ -11,20 +11,38 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from state import MultiAgentSDRState
 from config import get_llm
+from campaign_profile import DEFAULT_OFFER_PROFILE
 
-EVALUATOR_SYSTEM_PROMPT = """You are an Enterprise AI Email Quality & Compliance Judge.
+def build_evaluator_system_prompt(offer_ctx: dict) -> str:
+    campaign_type = offer_ctx.get("campaign_type", "OFFER")
+    if campaign_type == "JOB_SEEKER":
+        return """You are an Enterprise AI Career Outreach & Pitch Quality Judge.
+Your job is to objectively score cold candidate outreach emails before human review.
+
+Evaluation Criteria:
+1. Factual Grounding (1-10): Are statements about the target company (their tech stack, engineering milestones) strictly grounded in the research brief? (Descriptions of candidate skills/portfolio are permitted).
+2. Deliverability & Tone (1-10): Is the tone humble, high-signal, professional, and low-friction? (Penalize desperation, pushiness, spam buzzwords, and exaggerated claims).
+3. Length: Is the pitch concise and under 120 words with clear paragraphs?
+
+Overall Score (1-10):
+- 7-10: High quality, relevant, grounded in prospect context. (Verdict: PASS)
+- 1-6: False claims about the prospect, spammy tone, or unstructured text. (Verdict: NEEDS_REVISION)
+"""
+
+    return """You are an Enterprise AI Email Quality & Compliance Judge.
 Your job is to objectively score cold outbound email pitches before human review.
 
 Evaluation Criteria:
 1. Factual Grounding (1-10): Are all statements and assumptions ABOUT THE TARGET COMPANY (their initiatives, hiring priorities, and challenges) strictly grounded in the research brief? (Descriptions of our own product capabilities are permitted).
 2. Deliverability & Tone (1-10): Is the tone professional, consultative, and low-friction? (Penalize aggressive claims, spam buzzwords, and all-caps guarantees).
-3. Length: Is the pitch concise and under 120 words?
+3. Length: Is the pitch concise and under 120 words with clear paragraphs?
 
 Overall Score (1-10):
 - 7-10: High quality, grounded in verified prospect context. (Verdict: PASS)
-- 1-6: False claims about the prospect or spammy tone. (Verdict: NEEDS_REVISION)
+- 1-6: False claims about the prospect, spammy tone, or unstructured text. (Verdict: NEEDS_REVISION)
 """
 
+EVALUATOR_SYSTEM_PROMPT = build_evaluator_system_prompt(DEFAULT_OFFER_PROFILE)
 
 class EmailEvaluation(BaseModel):
     """Pydantic schema for automated pitch evaluation."""
@@ -34,31 +52,33 @@ class EmailEvaluation(BaseModel):
     verdict: Literal["PASS", "NEEDS_REVISION"] = Field(description="PASS if overall >= 7, else NEEDS_REVISION")
     critique: str = Field(description="Specific feedback for improvements if any")
 
-def evaluate_email_draft(research_brief: str, email_draft: str) -> EmailEvaluation:
+def evaluate_email_draft(research_brief: str, email_draft: str, offer_ctx: dict) -> EmailEvaluation:
     """Run LLM-as-a-Judge evaluation on an email draft."""
     llm = get_llm(temperature=0.1)
     structured_llm = llm.with_structured_output(EmailEvaluation)
 
     prompt = f"""Verified Research Brief:
-            {research_brief}
-            Drafted Email Proposal:
-            {email_draft}
-            Evaluate this pitch against the research brief:"""
+{research_brief}
+
+Drafted Email Proposal:
+{email_draft}
+
+Evaluate this pitch against the research brief and criteria:"""
     
     result: EmailEvaluation = structured_llm.invoke([
-        SystemMessage(content=EVALUATOR_SYSTEM_PROMPT),
+        SystemMessage(content=build_evaluator_system_prompt(offer_ctx)),
         HumanMessage(content=prompt)
     ])
     return result
-
 
 def evaluator_node(state: MultiAgentSDRState) -> dict:
     """Worker node that objectively judges draft quality before human review."""
     research = state.get("research_summary", "")
     draft = state.get("email_draft", "")
     attempts = state.get("eval_attempts", 0) + 1
+    offer_ctx = state.get("offer_context") or DEFAULT_OFFER_PROFILE
 
-    evaluation: EmailEvaluation = evaluate_email_draft(research, draft)
+    evaluation: EmailEvaluation = evaluate_email_draft(research, draft, offer_ctx)
 
     return {
         "eval_score": evaluation.overall_score,

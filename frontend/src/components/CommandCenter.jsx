@@ -9,6 +9,7 @@ import AnalyticsDashboard from './AnalyticsDashboard';
 import AuthModal from './AuthModal';
 import MailboxModal from './MailboxModal';
 import ThemeToggle from './ThemeToggle';
+import CampaignProfileStudio from './CampaignProfileStudio';
 
 export default function CommandCenter({ onNavigate, selectedPreset }) {
 
@@ -50,6 +51,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   const [quotaStats, setQuotaStats] = useState({ daily_limit: 20, used_today: 0, remaining_today: 20 });
   const [showBriefing, setShowBriefing] = useState(false);
 
+  // Campaign Profile Studio State
+  const [campaignProfile, setCampaignProfile] = useState(null);
+
   // Mailbox Connection State (Google Workspace OAuth)
   const [mailboxInfo, setMailboxInfo] = useState({ connected: false, email: null, provider: 'NONE' });
   const [showMailboxModal, setShowMailboxModal] = useState(false);
@@ -63,6 +67,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       setShowAuthModal(true);
     });
     checkAuth();
+    fetchCampaignProfile();
 
     // Check URL parameters for OAuth redirect status
     const params = new URLSearchParams(window.location.search);
@@ -93,6 +98,20 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
       }
     } catch (e) {
       console.warn("Could not fetch mailbox status:", e);
+    }
+  };
+
+  const fetchCampaignProfile = async () => {
+    try {
+      const res = await apiFetch("/api/profile/campaign");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profile) {
+          setCampaignProfile(data.profile);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch campaign profile:", e);
     }
   };
 
@@ -367,6 +386,25 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             </button>
           )}
 
+          {/* Active Offer / Persona Badge */}
+          {currentUser && campaignProfile && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("profile")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all shadow-xs ${
+                campaignProfile.campaign_type === 'JOB_SEEKER'
+                  ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:border-purple-400'
+                  : 'bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:border-blue-400'
+              }`}
+              title="Click to customize your Offer &amp; Persona profile"
+            >
+              <span>{campaignProfile.campaign_type === 'JOB_SEEKER' ? '💼' : '🚀'}</span>
+              <span className="font-semibold">
+                {campaignProfile.campaign_type === 'JOB_SEEKER' ? 'Job Seeker' : 'B2B Offer'}
+              </span>
+            </button>
+          )}
+
           {/* User Profile Pill / Auth Actions */}
           {currentUser ? (
             <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB] dark:border-[#1E293B]">
@@ -517,6 +555,16 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             >
               📊 ROI &amp; Intelligence
             </button>
+            <button
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'profile'
+                  ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220] shadow-xs"
+                  : "bg-[#F5F5FA] dark:bg-[#111827] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
+              }`}
+              onClick={() => setActiveTab("profile")}
+            >
+              🎯 Offer &amp; Persona Studio
+            </button>
           </div>
 
           {activeTab === "single" && (
@@ -528,6 +576,16 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                   <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                     Target Account Ingestion
                   </h3>
+                  {campaignProfile && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("profile")}
+                      className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors"
+                      title="Click to change your offer or persona"
+                    >
+                      {campaignProfile.campaign_type === 'JOB_SEEKER' ? '💼 Job Seeker Pitch' : `🚀 ${campaignProfile.company_or_brand || 'B2B Offer'}`}
+                    </button>
+                  )}
                 </div>
                 {loading && (
                   <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse">
@@ -620,6 +678,14 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             <AnalyticsDashboard />
           )}
 
+          {activeTab === "profile" && (
+            <CampaignProfileStudio
+              onProfileUpdated={(updated) => {
+                setCampaignProfile(updated);
+              }}
+            />
+          )}
+
           {/* Campaign Lifecycle Stepper */}
           {activeTab === "single" && threadId && (
             <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-6 transition-colors">
@@ -649,7 +715,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
                   { step: 1, label: "Researcher", completed: !!campaignState?.research_summary, active: loading },
-                  { step: 2, label: "ICP Analyst", completed: !!campaignState?.icp_fit_score },
+                  { step: 2, label: campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? "Career Analyst" : "ICP Analyst", completed: !!campaignState?.icp_fit_score },
                   { step: 3, label: "Copywriter", completed: !!campaignState?.email_draft },
                   { step: 4, label: "AI Judge", completed: !!campaignState?.eval_score },
                   { step: 5, label: "HITL Review", completed: campaignState?.approval_status === 'APPROVED', active: campaignState?.is_paused_at_gate },
@@ -698,12 +764,14 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {campaignState?.research_summary && (
                 <div className="space-y-2">
                   <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-                    Executive Intelligence Brief &amp; ICP Qualification
+                    {campaignState?.offer_context?.campaign_type === 'JOB_SEEKER'
+                      ? 'Technical Talent Brief & Career Opportunity Fit'
+                      : 'Executive Intelligence Brief & ICP Qualification'}
                   </div>
                   <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] font-mono text-xs text-[#1F2937] dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {campaignState.research_summary}
                     {"\n\n"}
-                    <strong>ICP Fit Score:</strong> {campaignState.icp_fit_score}/10{"\n"}
+                    <strong>{campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? 'Opportunity Alignment Score:' : 'ICP Fit Score:'}</strong> {campaignState.icp_fit_score}/10{"\n"}
                     <strong>Rationale:</strong> {campaignState.icp_rationale}
                   </div>
                 </div>
