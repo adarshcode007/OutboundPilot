@@ -34,6 +34,26 @@ SMTP_PASS = os.getenv("SMTP_PASS", "").replace(" ","").strip()
 
 EMAIL_REGEX = re.compile(r"^[\w\.-]+@([\w\.-]+\.\w+)$")
 
+def format_html_email(body_text: str) -> str:
+    """Converts plain text body with \n\n into clean, responsive HTML email with generous paragraph spacing."""
+    paragraphs = [p.strip() for p in body_text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        paragraphs = [body_text.strip()]
+    
+    html_paragraphs = []
+    for p in paragraphs:
+        p_html = p.replace("\n", "<br>")
+        html_paragraphs.append(f'<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #111827;">{p_html}</p>')
+    
+    body_content = "\n".join(html_paragraphs)
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827; margin: 0; padding: 0;">
+{body_content}
+</body>
+</html>"""
+
 def check_domain_mx(domain: str) -> bool:
     """Verifies that the target domain has active Mail Exchange (MX) records."""
     # Disallow mock test domains when real SMTP is active
@@ -162,6 +182,7 @@ def dispatch_outbound_email(
                 "to": [to_email],
                 "subject": subject,
                 "text": body,
+                "html": format_html_email(body),
                 "headers": {
                     "List-Unsubscribe": f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>",
                     "Auto-Submitted": "auto-generated",
@@ -191,7 +212,8 @@ def dispatch_outbound_email(
             msg["To"] = to_email
             msg["List-Unsubscribe"] = f"<mailto:unsubscribe@{FROM_EMAIL.split('@')[-1]}?subject=unsubscribe>"
             msg["Auto-Submitted"] = "auto-generated"
-            msg.attach(MIMEText(body, "plain"))
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            msg.attach(MIMEText(format_html_email(body), "html", "utf-8"))
 
             # Fallback to FROM_EMAIL if SMTP_USER was left as placeholder
             effective_user = SMTP_USER if (SMTP_USER and SMTP_USER != "your_email@gmail.com") else FROM_EMAIL

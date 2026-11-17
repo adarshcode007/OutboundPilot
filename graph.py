@@ -33,14 +33,20 @@ def dispatcher_node(state: MultiAgentSDRState) -> dict:
     subject = f"AI Infrastructure Partnership with {company}"
     body = draft
 
-    lines = [line.strip() for line in draft.splitlines() if line.strip()]
-    for line in lines:
-        if line.lower().startswith("subject:") or line.lower().startswith("**subject:**"):
-            subject = line.split(":",1)[1].replace("*","").strip()
+    # Parse subject line while strictly preserving paragraph breaks in the body
+    raw_lines = draft.splitlines()
+    body_lines = []
+    subject_extracted = False
 
-            # Remove subject line from body
-            body = "\n".join(lines[1:]).strip()
-            break
+    for line in raw_lines:
+        stripped = line.strip()
+        if not subject_extracted and (stripped.lower().startswith("subject:") or stripped.lower().startswith("**subject:**")):
+            subject = stripped.split(":", 1)[1].replace("*", "").strip()
+            subject_extracted = True
+        else:
+            body_lines.append(line)
+
+    body = "\n".join(body_lines).strip()
     
     # Execute transactional tool
     dispatch_receipt = send_outbound_email.invoke({

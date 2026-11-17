@@ -275,7 +275,10 @@ def send_email_via_gmail_api(
     Sends an email directly through the Gmail API (users.messages.send)
     on behalf of the authenticated user's Google Workspace / Gmail account.
     """
-    # 1. Construct standard RFC 2822 MIME message
+    # 1. Construct standard RFC 2822 MIME message with both Plain Text and HTML alternatives
+    from dispatcher import format_html_email
+    html_body = format_html_email(body)
+
     msg = MIMEMultipart("alternative")
     msg["To"] = to_email
     msg["From"] = sender_email
@@ -283,6 +286,7 @@ def send_email_via_gmail_api(
     msg["List-Unsubscribe"] = f"<mailto:unsubscribe@{sender_email.split('@')[-1]}?subject=unsubscribe>"
     msg["Auto-Submitted"] = "auto-generated"
     msg.attach(MIMEText(body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     # 2. Base64url encode the message bytes (required by Gmail API)
     raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
