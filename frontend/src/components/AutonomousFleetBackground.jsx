@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, ShieldCheck, CheckCircle2, TrendingUp, Sparkles, MailCheck, Bot } from 'lucide-react';
+import { Target, ShieldCheck, CheckCircle2, TrendingUp, Sparkles, MailCheck } from 'lucide-react';
 
 export default function AutonomousFleetBackground() {
   return (
@@ -171,27 +171,6 @@ export default function AutonomousFleetBackground() {
           <MailCheck className="w-3 h-3 text-emerald-500" />
           <span>Thread #camp_8f21 live</span>
         </div>
-      </div>
-
-      {/* 9. Upward Drifting Micro Telemetry Stream (Live Signal Drift, 50% Opacity) */}
-      <div 
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute left-[15%] top-1/2 opacity-50 hover:opacity-80 transition-opacity duration-300"
-        style={{ animation: 'signalDrift 16s linear infinite' }}
-      >
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-        <span className="text-[11px] font-medium text-[#4B5563] dark:text-[#CBD5E1]">
-          Cloudflare • Filtered Out (Saved 6,500 Quota Tokens)
-        </span>
-      </div>
-
-      <div 
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute right-[18%] top-3/4 opacity-50 hover:opacity-80 transition-opacity duration-300"
-        style={{ animation: 'signalDrift 19s linear infinite 5s' }}
-      >
-        <Bot className="w-3.5 h-3.5 text-[#3B6BF0]" />
-        <span className="text-[11px] font-medium text-[#4B5563] dark:text-[#CBD5E1]">
-          Vercel • Real-time hiring signal verified
-        </span>
       </div>
     </div>
   );
