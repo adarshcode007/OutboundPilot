@@ -76,3 +76,39 @@ html.dark body {
 
 .dark ::-webkit-scrollbar-thumb { background: #1e293b; }
 .dark ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* Stageshow Autonomous Fleet Drift Animations */
+@keyframes fleetFloat1 {
+  0% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-16px) translateX(4px) rotate(0.8deg);
+  }
+  66% {
+    transform: translateY(-8px) translateX(-4px) rotate(-0.5deg);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+}
+
+@keyframes fleetFloat2 {
+  0% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(14px) translateX(-5px) rotate(-0.8deg);
+  }
+  66% {
+    transform: translateY(-18px) translateX(3px) rotate(0.6deg);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+}
+
+.fleet-card {
+  will-change: transform;
+}
+

@@ -3,7 +3,7 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 
 export default function CtaBanner({ onNavigate }) {
   return (
-    <section className="py-20 md:py-28 bg-white dark:bg-[#0B0F17] border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
+    <section className="py-20 md:py-28 bg-white/80 dark:bg-[#0B0F17]/80 backdrop-blur-xs border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
       <div className="max-w-4xl mx-auto px-6 text-center">
         <div className="bg-[#FAFBFD] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-3xl p-10 md:p-16 relative overflow-hidden shadow-xs">
           {/* Subtle accent glow */}

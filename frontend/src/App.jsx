@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import CommandCenter from './components/CommandCenter';
+import AutonomousFleetBackground from './components/AutonomousFleetBackground';
 import { ThemeProvider } from './context/ThemeContext';
 
 function MainApp() {
@@ -30,20 +31,26 @@ function MainApp() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  if (currentView === "workspace") {
-    return (
-      <CommandCenter 
-        onNavigate={navigateTo} 
-        selectedPreset={selectedPreset} 
-      />
-    );
-  }
-
   return (
-    <LandingPage 
-      onNavigate={navigateTo} 
-      onSelectPreset={handleSelectPreset} 
-    />
+    <div className="relative min-h-screen w-full bg-white dark:bg-[#0B0F17] text-[#1F2937] dark:text-[#CBD5E1] transition-colors overflow-x-hidden">
+      {/* Stageshow Autonomous Fleet Background Layer */}
+      <AutonomousFleetBackground />
+
+      {/* Main Interactive App Content */}
+      <div className="relative z-10">
+        {currentView === "workspace" ? (
+          <CommandCenter 
+            onNavigate={navigateTo} 
+            selectedPreset={selectedPreset} 
+          />
+        ) : (
+          <LandingPage 
+            onNavigate={navigateTo} 
+            onSelectPreset={handleSelectPreset} 
+          />
+        )}
+      </div>
+    </div>
   );
 }
 

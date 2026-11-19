@@ -26,7 +26,7 @@ const GUARANTEES = [
 
 export default function SecuritySection() {
   return (
-    <section id="security" className="py-20 md:py-28 bg-[#FAFBFD] dark:bg-[#0B0F17] border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
+    <section id="security" className="py-20 md:py-28 bg-[#FAFBFD]/80 dark:bg-[#0B0F17]/80 backdrop-blur-xs border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-16">

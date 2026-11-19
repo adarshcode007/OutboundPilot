@@ -9,7 +9,7 @@ export default function SimulatorSection({ onSelectPreset }) {
   const isDisqualified = activeSim.company === "Bob's Bakery";
 
   return (
-    <section id="simulator" className="py-20 md:py-28 bg-white dark:bg-[#0B0F17] border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
+    <section id="simulator" className="py-20 md:py-28 bg-white/80 dark:bg-[#0B0F17]/80 backdrop-blur-xs border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-12">

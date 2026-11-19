@@ -49,7 +49,7 @@ const STEPS = [
 
 export default function ArchitectureSection() {
   return (
-    <section id="how-it-works" className="py-20 md:py-28 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0B0F17] transition-colors">
+    <section id="how-it-works" className="py-20 md:py-28 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD]/80 dark:bg-[#0B0F17]/80 backdrop-blur-xs transition-colors">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-16">
