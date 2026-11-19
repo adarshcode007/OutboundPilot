@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, ShieldCheck, CheckCircle2, TrendingUp, Sparkles, Zap, MailCheck, Bot } from 'lucide-react';
+import { Target, ShieldCheck, CheckCircle2, TrendingUp, Sparkles, MailCheck, Bot } from 'lucide-react';
 
 export default function AutonomousFleetBackground() {
   return (
@@ -7,23 +7,23 @@ export default function AutonomousFleetBackground() {
       className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none"
       aria-hidden="true"
     >
-      {/* 1. Visible Engineering Dot Grid */}
+      {/* 1. Engineering Dot Grid (50% Opacity) */}
       <div 
-        className="absolute inset-0 bg-[radial-gradient(#94A3B8_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:32px_32px] opacity-25 dark:opacity-40" 
+        className="absolute inset-0 bg-[radial-gradient(#94A3B8_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:32px_32px] opacity-25 dark:opacity-35" 
       />
 
-      {/* 2. Living Ambient Luminous Glow (Visible Breathing Aura) */}
+      {/* 2. Living Ambient Luminous Glow (50% Opacity) */}
       <div 
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[550px] rounded-full bg-[#3B6BF0]/20 dark:bg-[#3B6BF0]/25 blur-[120px] pointer-events-none"
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[550px] rounded-full bg-[#3B6BF0]/20 dark:bg-[#3B6BF0]/25 blur-[120px] pointer-events-none opacity-50"
         style={{ animation: 'auraBreathe 8s ease-in-out infinite' }}
       />
       <div 
-        className="absolute top-2/3 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-500/15 dark:bg-indigo-500/20 blur-[130px] pointer-events-none"
+        className="absolute top-2/3 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-500/15 dark:bg-indigo-500/20 blur-[130px] pointer-events-none opacity-50"
       />
 
-      {/* 3. Floating Autonomous Fleet - Card 1: Datadog (Upper Left) */}
+      {/* 3. Floating Autonomous Fleet - Card 1: Datadog (Upper Left, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-24 left-3 sm:left-6 lg:left-8 xl:left-12 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-24 left-3 sm:left-6 lg:left-8 xl:left-12 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat1 8s ease-in-out infinite' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -47,9 +47,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 4. Floating Autonomous Fleet - Card 2: Stripe (Upper Right) */}
+      {/* 4. Floating Autonomous Fleet - Card 2: Stripe (Upper Right, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-28 right-3 sm:right-6 lg:right-8 xl:right-12 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-28 right-3 sm:right-6 lg:right-8 xl:right-12 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat2 9s ease-in-out infinite 1s' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -72,9 +72,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 5. Floating Autonomous Fleet - Card 3: Ramp (Mid Left) */}
+      {/* 5. Floating Autonomous Fleet - Card 3: Ramp (Mid Left, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-[440px] left-2 sm:left-6 lg:left-10 xl:left-16 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-[440px] left-2 sm:left-6 lg:left-10 xl:left-16 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat3 10s ease-in-out infinite 0.5s' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -98,9 +98,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 6. Floating Autonomous Fleet - Card 4: Snowflake (Mid Right) */}
+      {/* 6. Floating Autonomous Fleet - Card 4: Snowflake (Mid Right, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-[460px] right-2 sm:right-6 lg:right-10 xl:right-16 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-[460px] right-2 sm:right-6 lg:right-10 xl:right-16 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat4 9.5s ease-in-out infinite 2s' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -123,9 +123,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 7. Floating Autonomous Fleet - Card 5: Notion (Lower Left) */}
+      {/* 7. Floating Autonomous Fleet - Card 5: Notion (Lower Left, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-[850px] left-3 sm:left-8 lg:left-12 xl:left-20 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-[850px] left-3 sm:left-8 lg:left-12 xl:left-20 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat1 11s ease-in-out infinite 3s' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -148,9 +148,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 8. Floating Autonomous Fleet - Card 6: Linear (Lower Right) */}
+      {/* 8. Floating Autonomous Fleet - Card 6: Linear (Lower Right, 50% Opacity) */}
       <div 
-        className="fleet-card absolute top-[880px] right-3 sm:right-8 lg:right-12 xl:right-20 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 transition-opacity"
+        className="fleet-card absolute top-[880px] right-3 sm:right-8 lg:right-12 xl:right-20 w-56 sm:w-64 p-3 rounded-xl bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border border-[#E5E7EB] dark:border-[#1E293B] shadow-md dark:shadow-black/40 z-0 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'fleetFloat2 10.5s ease-in-out infinite 1.5s' }}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -173,9 +173,9 @@ export default function AutonomousFleetBackground() {
         </div>
       </div>
 
-      {/* 9. Upward Drifting Micro Telemetry Stream (Live Signal Drift) */}
+      {/* 9. Upward Drifting Micro Telemetry Stream (Live Signal Drift, 50% Opacity) */}
       <div 
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute left-[15%] top-1/2"
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute left-[15%] top-1/2 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'signalDrift 16s linear infinite' }}
       >
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
@@ -185,7 +185,7 @@ export default function AutonomousFleetBackground() {
       </div>
 
       <div 
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute right-[18%] top-3/4"
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 dark:bg-[#161F33]/80 backdrop-blur-sm border border-[#E5E7EB] dark:border-[#1E293B] shadow-xs absolute right-[18%] top-3/4 opacity-50 hover:opacity-80 transition-opacity duration-300"
         style={{ animation: 'signalDrift 19s linear infinite 5s' }}
       >
         <Bot className="w-3.5 h-3.5 text-[#3B6BF0]" />

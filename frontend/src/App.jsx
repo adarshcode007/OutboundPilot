@@ -33,8 +33,8 @@ function MainApp() {
 
   return (
     <div className="relative min-h-screen w-full bg-white dark:bg-[#0B0F17] text-[#1F2937] dark:text-[#CBD5E1] transition-colors overflow-x-hidden">
-      {/* Stageshow Autonomous Fleet Background Layer */}
-      <AutonomousFleetBackground />
+      {/* Stageshow Autonomous Fleet Background Layer - ONLY visible on Landing Page */}
+      {currentView === "landing" && <AutonomousFleetBackground />}
 
       {/* Main Interactive App Content */}
       <div className="relative z-10">

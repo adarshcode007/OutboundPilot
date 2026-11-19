@@ -330,7 +330,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
   };
 
   return (
-    <div className="min-h-screen bg-transparent text-[#1F2937] dark:text-[#CBD5E1] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FAFBFD] dark:bg-[#0B0F17] text-[#1F2937] dark:text-[#CBD5E1] flex flex-col font-sans transition-colors">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B0F17]/95 backdrop-blur-md border-b border-[#E5E7EB] dark:border-[#1E293B] px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
