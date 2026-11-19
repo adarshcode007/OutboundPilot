@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { apiFetch } from '../apiClient';
+import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 // Smart header normalization rules
 function normalizeHeader(header) {
@@ -83,7 +84,7 @@ export default function CsvUploader({ onUploadSuccess }) {
         throw new Error("No valid leads found. Please ensure headers include Company, Role, and Email.");
       }
 
-      // Send to backend for zero-token regex scoring and PostgreSQL insertion
+      // Send to backend for priority scoring and insertion
       const res = await apiFetch("/api/leads/upload", {
         method: "POST",
         body: JSON.stringify({ leads: parsedLeads }),
@@ -117,18 +118,22 @@ export default function CsvUploader({ onUploadSuccess }) {
     <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 mb-6 shadow-xs transition-colors">
       <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
         <div className="flex items-center gap-2.5">
-          <span className="text-xl">📁</span>
-          <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-            Batch Lead Ingestion &amp; Auto-Mapper
-          </h3>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center">
+            <UploadCloud className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-serif text-lg sm:text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
+              Upload Lead Spreadsheet
+            </h3>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
-            <span>⚡</span>
-            <span>0 LLM Tokens (Regex Scored)</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-emerald-700 dark:text-emerald-400 border border-[#E5E7EB] dark:border-[#1E293B]">
+            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+            <span>Auto-Formatted &amp; Ranked</span>
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800">
-            CSV / XLSX / XLS
+            CSV / XLSX
           </span>
         </div>
       </div>
@@ -138,7 +143,7 @@ export default function CsvUploader({ onUploadSuccess }) {
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+        className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
           isDragging
             ? "border-[#3B6BF0] bg-[#3B6BF0]/5 dark:bg-[#3B6BF0]/10"
             : "border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0B0F17] hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] hover:border-gray-300 dark:hover:border-gray-700"
@@ -151,18 +156,25 @@ export default function CsvUploader({ onUploadSuccess }) {
           className="hidden"
           onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
         />
-        <div className="text-3xl mb-2">📄</div>
+        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center mx-auto mb-3">
+          {uploading ? (
+            <RefreshCw className="w-6 h-6 animate-spin text-[#3B6BF0]" />
+          ) : (
+            <FileSpreadsheet className="w-6 h-6 text-[#3B6BF0]" />
+          )}
+        </div>
         <div className="text-sm font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
           {uploading ? "Extracting & Prioritizing Leads..." : "Click or drag & drop CSV or Excel spreadsheet here"}
         </div>
         <div className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
-          Supports .csv and .xlsx — Auto-detects Company, Target Role, Contact Name, Email
+          Supports .csv and .xlsx — Automatically detects Company, Role, Contact Name, and Email
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs">
-          {error}
+        <div className="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
     </div>

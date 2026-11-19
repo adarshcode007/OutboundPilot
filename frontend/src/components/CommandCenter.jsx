@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { PRESETS } from '../data/presets';
 import { apiFetch, setOnUnauthorized } from '../apiClient';
+import { 
+  Search, Target, PenLine, ShieldCheck, CheckSquare, Send, Sparkles, 
+  Briefcase, User, Mail, Inbox, Layers, Settings, LogOut, RefreshCw, 
+  Play, Check, AlertCircle, ArrowRight, Clock, Building2, CheckCircle2, 
+  XCircle, Filter, FileText, ChevronRight, X, TrendingUp
+} from 'lucide-react';
 
 import CsvUploader from './CsvUploader';
 import LeadTable from './LeadTable';
@@ -335,21 +341,19 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             ← Product Overview
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-lg">⚡</span>
+            <div className="w-7 h-7 rounded-lg bg-[#0B1220] dark:bg-white flex items-center justify-center text-white dark:text-[#0B1220]">
+              <Sparkles className="w-4 h-4 text-white dark:text-[#0B1220]" />
+            </div>
             <span className="font-serif text-lg font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-              SDR Command Center
+              Outbound Sales Studio
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
           <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            FastAPI 8000
-          </div>
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]">
-            <span>🐘</span>
-            PostgreSQL Scoped
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>All Systems Ready</span>
           </div>
 
           {/* Theme Toggle Button */}
@@ -374,12 +378,7 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 </>
               ) : (
                 <>
-                  <svg className="w-3.5 h-3.5 text-[#3B6BF0] fill-current" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
+                  <Mail className="w-3.5 h-3.5 text-[#3B6BF0]" />
                   <span>Connect Mailbox</span>
                 </>
               )}
@@ -398,9 +397,13 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               }`}
               title="Click to customize your Offer &amp; Persona profile"
             >
-              <span>{campaignProfile.campaign_type === 'JOB_SEEKER' ? '💼' : '🚀'}</span>
+              {campaignProfile.campaign_type === 'JOB_SEEKER' ? (
+                <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 text-[#3B6BF0]" />
+              )}
               <span className="font-semibold">
-                {campaignProfile.campaign_type === 'JOB_SEEKER' ? 'Job Seeker' : 'B2B Offer'}
+                {campaignProfile.campaign_type === 'JOB_SEEKER' ? 'Job Seeker Mode' : 'B2B Offer Mode'}
               </span>
             </button>
           )}
@@ -409,10 +412,10 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           {currentUser ? (
             <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB] dark:border-[#1E293B]">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white dark:bg-[#111827] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]">
-                <span>👤</span>
+                <User className="w-3.5 h-3.5 text-gray-500" />
                 <span className="font-semibold">{currentUser.full_name || currentUser.email}</span>
                 <span className="text-[#3B6BF0] ml-1 font-mono text-[11px]">
-                  ({quotaStats.remaining_today}/{quotaStats.daily_limit} slots)
+                  ({quotaStats.remaining_today}/{quotaStats.daily_limit} left today)
                 </span>
               </div>
               <button
@@ -437,8 +440,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
         {/* Left Sidebar */}
         <aside className="w-80 shrink-0 border-r border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0E1422] p-6 space-y-8 hidden lg:block overflow-y-auto transition-colors">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-3">
-              Preset Target Accounts
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-3 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-gray-400" />
+              <span>Target Account Examples</span>
             </div>
             <div className="space-y-2">
               {PRESETS.map((p, i) => (
@@ -470,8 +474,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           </div>
 
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-3">
-              PostgreSQL Checkpoints ({campaignHistory.length})
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-3 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-gray-400" />
+              <span>Saved Campaigns ({campaignHistory.length})</span>
             </div>
             {campaignHistory.length === 0 ? (
               <div className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
@@ -486,10 +491,10 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                     onClick={() => setThreadId(c.thread_id)}
                   >
                     <span className="font-mono text-[11px] text-[#3B6BF0] truncate max-w-[170px]">
-                      {c.thread_id}
+                      #{c.thread_id.replace('camp_', '').toUpperCase()}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]">
-                      {c.total_steps} steps
+                      {c.total_steps || 6} steps
                     </span>
                   </div>
                 ))}
@@ -510,7 +515,13 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 : "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800"
             }`}>
               <div className="flex items-center gap-2">
-                <span>{mailboxNotice.type === "success" ? "📬" : mailboxNotice.type === "error" ? "⚠️" : "ℹ️"}</span>
+                {mailboxNotice.type === "success" ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                ) : mailboxNotice.type === "error" ? (
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                ) : (
+                  <Mail className="w-4 h-4 text-blue-600" />
+                )}
                 <span>{mailboxNotice.text}</span>
               </div>
               <button
@@ -526,44 +537,48 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
           {/* Tab Mode Switcher: Single Lead vs Batch CSV Queue vs Analytics */}
           <div className="flex gap-2 border-b border-[#E5E7EB] dark:border-[#1E293B] pb-3">
             <button
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'single'
                   ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220] shadow-xs"
                   : "bg-[#F5F5FA] dark:bg-[#111827] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
               }`}
               onClick={() => setActiveTab("single")}
             >
-              🎯 Single Lead Ingestion
+              <Target className="w-3.5 h-3.5" />
+              <span>Single Outreach</span>
             </button>
             <button
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'batch'
                   ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220] shadow-xs"
                   : "bg-[#F5F5FA] dark:bg-[#111827] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
               }`}
               onClick={() => { setActiveTab("batch"); fetchLeads(); }}
             >
-              📁 Batch CSV &amp; Lead Queue ({queueLeads.length})
+              <Layers className="w-3.5 h-3.5" />
+              <span>Batch Queue ({queueLeads.length})</span>
             </button>
             <button
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'analytics'
                   ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220] shadow-xs"
                   : "bg-[#F5F5FA] dark:bg-[#111827] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
               }`}
               onClick={() => setActiveTab("analytics")}
             >
-              📊 ROI &amp; Intelligence
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Results &amp; Analytics</span>
             </button>
             <button
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'profile'
                   ? "bg-[#0B1220] dark:bg-white text-white dark:text-[#0B1220] shadow-xs"
                   : "bg-[#F5F5FA] dark:bg-[#111827] text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]"
               }`}
               onClick={() => setActiveTab("profile")}
             >
-              🎯 Offer &amp; Persona Studio
+              <Settings className="w-3.5 h-3.5" />
+              <span>Offer &amp; Persona Profile</span>
             </button>
           </div>
 
@@ -572,24 +587,39 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs transition-colors">
               <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">🎯</span>
-                  <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-                    Target Account Ingestion
-                  </h3>
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center">
+                    <Target className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg sm:text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
+                      Target Prospect Outreach
+                    </h3>
+                  </div>
                   {campaignProfile && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("profile")}
-                      className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors"
-                      title="Click to change your offer or persona"
+                      className="ml-2 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                      title="Click to customize your offer or persona"
                     >
-                      {campaignProfile.campaign_type === 'JOB_SEEKER' ? '💼 Job Seeker Pitch' : `🚀 ${campaignProfile.company_or_brand || 'B2B Offer'}`}
+                      {campaignProfile.campaign_type === 'JOB_SEEKER' ? (
+                        <>
+                          <Briefcase className="w-3 h-3 text-purple-600" />
+                          <span>Job Seeker Pitch</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 text-[#3B6BF0]" />
+                          <span>{campaignProfile.company_or_brand || 'B2B Offer'}</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
                 {loading && (
-                  <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse">
-                    Swarm Active
+                  <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse flex items-center gap-1.5">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Researching...</span>
                   </span>
                 )}
               </div>
@@ -598,50 +628,50 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
-                      Company Domain / Name
+                      Company Name or Domain
                     </label>
                     <input
                       value={company}
                       onChange={e => setCompany(e.target.value)}
                       required
                       placeholder="e.g. Stripe, OpenAI, Datadog"
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
-                      Target Executive Role
+                      Executive Role or Job Title
                     </label>
                     <input
                       value={role}
                       onChange={e => setRole(e.target.value)}
                       required
                       placeholder="e.g. VP of Engineering"
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
-                      Contact Name
+                      Prospect Contact Name
                     </label>
                     <input
                       value={name}
                       onChange={e => setName(e.target.value)}
                       required
                       placeholder="e.g. David"
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-1.5">
-                      Contact Email
+                      Prospect Contact Email
                     </label>
                     <input
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       required
                       placeholder="e.g. david@stripe.com"
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-sm text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
                     />
                   </div>
                 </div>
@@ -649,10 +679,20 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-sm font-medium py-3 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] disabled:opacity-50"
+                    className="w-full bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-sm font-medium py-3 px-4 rounded-xl transition-all shadow-xs active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                     disabled={loading}
                   >
-                    {loading ? "Multi-Agent Swarm Orchestrating..." : "Launch Autonomous SDR Swarm →"}
+                    {loading ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Researching Prospect &amp; Drafting Outreach...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Generate Personalized Outreach →</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -691,9 +731,11 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-6 transition-colors">
               <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">🔄</span>
-                  <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-                    Campaign Lifecycle: <span className="font-mono text-[#3B6BF0]">{threadId}</span>
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-serif text-lg sm:text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
+                    Outreach Progress: <span className="font-mono text-[#3B6BF0]">#{threadId.replace('camp_', '').toUpperCase()}</span>
                   </h3>
                 </div>
                 {campaignState && (
@@ -706,7 +748,13 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
                       ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
                       : 'bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]'
                   }`}>
-                    {campaignState.ui_status}
+                    {campaignState.ui_status === 'AWAITING_HUMAN_REVIEW'
+                      ? 'Review Required'
+                      : campaignState.ui_status === 'DISPATCHED'
+                      ? 'Sent'
+                      : campaignState.ui_status === 'DISQUALIFIED'
+                      ? 'Not a Match'
+                      : campaignState.ui_status}
                   </span>
                 )}
               </div>
@@ -714,48 +762,52 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {/* Stepper Progress Indicator */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
-                  { step: 1, label: "Researcher", completed: !!campaignState?.research_summary, active: loading },
-                  { step: 2, label: campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? "Career Analyst" : "ICP Analyst", completed: !!campaignState?.icp_fit_score },
-                  { step: 3, label: "Copywriter", completed: !!campaignState?.email_draft },
-                  { step: 4, label: "AI Judge", completed: !!campaignState?.eval_score },
-                  { step: 5, label: "HITL Review", completed: campaignState?.approval_status === 'APPROVED', active: campaignState?.is_paused_at_gate },
-                  { step: 6, label: "Dispatcher", completed: campaignState?.approval_status === 'APPROVED' },
-                ].map(s => (
-                  <div
-                    key={s.step}
-                    className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
-                      s.completed
-                        ? "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
-                        : s.active
-                        ? "bg-[#3B6BF0]/10 border-[#3B6BF0] text-[#3B6BF0] ring-1 ring-[#3B6BF0]/30"
-                        : "bg-[#FAFBFD] dark:bg-[#0E1422] border-[#E5E7EB] dark:border-[#1E293B] text-[#6B7280] dark:text-[#94A3B8]"
-                    }`}
-                  >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mb-1.5 ${
-                      s.completed
-                        ? "bg-emerald-600 text-white"
-                        : s.active
-                        ? "bg-[#3B6BF0] text-white"
-                        : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]"
-                    }`}>
-                      {s.completed ? "✓" : s.step}
+                  { step: 1, label: "Research", icon: Search, completed: !!campaignState?.research_summary, active: loading },
+                  { step: 2, label: campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? "Career Fit" : "Match Score", icon: Target, completed: !!campaignState?.icp_fit_score },
+                  { step: 3, label: "Email Draft", icon: PenLine, completed: !!campaignState?.email_draft },
+                  { step: 4, label: "Accuracy Check", icon: ShieldCheck, completed: !!campaignState?.eval_score },
+                  { step: 5, label: "Your Review", icon: CheckSquare, completed: campaignState?.approval_status === 'APPROVED', active: campaignState?.is_paused_at_gate },
+                  { step: 6, label: "Delivered", icon: Send, completed: campaignState?.approval_status === 'APPROVED' },
+                ].map(s => {
+                  const StepIcon = s.icon;
+                  return (
+                    <div
+                      key={s.step}
+                      className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                        s.completed
+                          ? "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                          : s.active
+                          ? "bg-[#3B6BF0]/10 border-[#3B6BF0] text-[#3B6BF0] ring-1 ring-[#3B6BF0]/30"
+                          : "bg-[#FAFBFD] dark:bg-[#0E1422] border-[#E5E7EB] dark:border-[#1E293B] text-[#6B7280] dark:text-[#94A3B8]"
+                      }`}
+                    >
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mb-1.5 ${
+                        s.completed
+                          ? "bg-emerald-600 text-white"
+                          : s.active
+                          ? "bg-[#3B6BF0] text-white"
+                          : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]"
+                      }`}>
+                        {s.completed ? <Check className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="text-xs font-medium">{s.label}</div>
                     </div>
-                    <div className="text-xs font-medium">{s.label}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Disqualified Notice */}
               {campaignState?.ui_status === "DISQUALIFIED" && (
                 <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-1.5">
                   <div className="font-semibold text-rose-700 dark:text-rose-400 text-sm flex items-center gap-2">
-                    🛑 Lead Disqualified ({campaignState.icp_fit_score}/10) — Pipeline Aborted Early
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    <span>Opportunity Not a Fit ({campaignState.icp_fit_score}/10) — Outreach Halted</span>
                   </div>
-                  <div className="text-xs text-rose-900/80 dark:text-rose-300/80">
+                  <div className="text-xs text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
                     {campaignState.icp_rationale}
                   </div>
-                  <div className="text-[11px] text-rose-600 dark:text-rose-400 font-mono pt-1">
-                    Token-Saver Guardrail: Stopped before copywriting to preserve sender reputation and token compute.
+                  <div className="text-[11px] text-rose-600 dark:text-rose-400 font-medium pt-1">
+                    Smart Protection: Automatically halted before writing or sending an email to protect your domain and save your daily quota.
                   </div>
                 </div>
               )}
@@ -763,16 +815,19 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {/* Executive Brief */}
               {campaignState?.research_summary && (
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-                    {campaignState?.offer_context?.campaign_type === 'JOB_SEEKER'
-                      ? 'Technical Talent Brief & Career Opportunity Fit'
-                      : 'Executive Intelligence Brief & ICP Qualification'}
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                    <span>
+                      {campaignState?.offer_context?.campaign_type === 'JOB_SEEKER'
+                        ? 'Company Tech Stack & Career Opportunity Fit'
+                        : 'Prospect Research & Match Rationale'}
+                    </span>
                   </div>
                   <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] font-mono text-xs text-[#1F2937] dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {campaignState.research_summary}
                     {"\n\n"}
-                    <strong>{campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? 'Opportunity Alignment Score:' : 'ICP Fit Score:'}</strong> {campaignState.icp_fit_score}/10{"\n"}
-                    <strong>Rationale:</strong> {campaignState.icp_rationale}
+                    <strong>{campaignState?.offer_context?.campaign_type === 'JOB_SEEKER' ? 'Opportunity Match Score:' : 'Target Match Score:'}</strong> {campaignState.icp_fit_score}/10{"\n"}
+                    <strong>Match Rationale:</strong> {campaignState.icp_rationale}
                   </div>
                 </div>
               )}
@@ -780,16 +835,19 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {/* AI Quality Judge Card */}
               {campaignState?.eval_score && (
                 <div className="p-4 rounded-xl bg-[#F5F5FA] dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B] flex flex-col md:flex-row md:items-center justify-between gap-2">
-                  <div>
-                    <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-                      🛡️ AI Quality Judge: {campaignState.eval_score}/10 [{campaignState.eval_verdict}]
-                    </div>
-                    <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-0.5">
-                      Feedback: {campaignState.eval_critique}
+                  <div className="flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
+                        AI Quality &amp; Accuracy Review: {campaignState.eval_score}/10 [{campaignState.eval_verdict === 'PASS' ? 'Passed' : 'Needs Review'}]
+                      </div>
+                      <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-0.5">
+                        Feedback: {campaignState.eval_critique}
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                    Pre-Screened
+                  <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                    Fact-Checked
                   </span>
                 </div>
               )}
@@ -802,17 +860,19 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               <div className="flex items-start justify-between pb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">⏸️</span>
-                    <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-                      Human-in-the-Loop Gate: Review &amp; Sign-Off Required
+                    <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+                      <CheckSquare className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-serif text-lg sm:text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
+                      Review &amp; Approve Before Sending
                     </h3>
                   </div>
-                  <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-0.5">
-                    Target Recipient: {campaignState.target_contact_name} ({campaignState.target_contact_email})
+                  <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
+                    Recipient: <strong>{campaignState.target_contact_name}</strong> ({campaignState.target_contact_email})
                   </p>
                 </div>
                 <span className="text-xs font-semibold uppercase px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                  Execution Paused
+                  Waiting for Your Approval
                 </span>
               </div>
 
@@ -823,8 +883,9 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               )}
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-2">
-                  Executive Outreach Proposal (Editable Before Sending)
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-2 flex items-center justify-between">
+                  <span>Outreach Proposal (Editable Before Sending)</span>
+                  <span className="text-[10px] text-[#9CA3AF] lowercase">feel free to make manual adjustments</span>
                 </label>
                 <textarea
                   value={editableDraft}
@@ -836,23 +897,25 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
 
               {/* AI Re-draft critique input */}
               <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
-                <label className="block text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2">
-                  💬 Natural Language Feedback for AI Copywriter (Optional)
+                <label className="block text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2 flex items-center gap-1.5">
+                  <PenLine className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                  <span>Ask AI to Revise (Optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <input
                     value={critique}
                     onChange={e => setCritique(e.target.value)}
-                    placeholder="e.g. 'Shorten to under 50 words and emphasize security compliance'"
+                    placeholder="e.g. 'Shorten to under 60 words and highlight our portfolio link'"
                     className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#111827] text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
                   />
                   <button
                     type="button"
-                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] transition-colors disabled:opacity-50"
+                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] transition-colors disabled:opacity-50 flex items-center gap-1.5"
                     onClick={() => handleAction("REDRAFT")}
                     disabled={actionLoading || !critique.trim()}
                   >
-                    {actionLoading ? "Rewriting..." : "✨ Ask AI to Re-draft"}
+                    <RefreshCw className={`w-3 h-3 ${actionLoading ? 'animate-spin' : ''}`} />
+                    <span>{actionLoading ? "Rewriting..." : "Ask AI to Revise"}</span>
                   </button>
                 </div>
               </div>
@@ -860,21 +923,22 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {/* Dispatch Sender Preview */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-3.5 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-2">
-                  <span className="text-[#6B7280] dark:text-[#94A3B8]">📤 Sender:</span>
+                  <Mail className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-[#6B7280] dark:text-[#94A3B8]">Sending From:</span>
                   {mailboxInfo?.connected ? (
                     <span className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      {mailboxInfo.email} (Google Workspace)
+                      {mailboxInfo.email} (Connected Google Account)
                     </span>
                   ) : (
                     <span className="text-[#6B7280] dark:text-[#94A3B8]">
-                      System Default / Sandbox (
+                      Sandbox Mode (
                       <button
                         type="button"
                         onClick={() => { setMailboxConfigError(false); setShowMailboxModal(true); }}
                         className="text-[#3B6BF0] underline hover:opacity-80 font-medium"
                       >
-                        Connect your Google domain
+                        Connect your Gmail/Google domain
                       </button>
                       )
                     </span>
@@ -888,18 +952,20 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
               {/* Action Controls */}
               <div className="flex justify-end gap-3 pt-2">
                 <button
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors disabled:opacity-50 flex items-center gap-1.5"
                   onClick={() => handleAction("REJECT")}
                   disabled={actionLoading}
                 >
-                  🛑 Reject Lead
+                  <X className="w-3.5 h-3.5" />
+                  <span>Decline Lead</span>
                 </button>
                 <button
-                  className="px-5 py-2.5 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5"
                   onClick={() => handleAction("APPROVE")}
                   disabled={actionLoading}
                 >
-                  {actionLoading ? "Dispatching..." : "✓ Approve & Dispatch Outreach"}
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{actionLoading ? "Sending..." : "Approve & Send Email"}</span>
                 </button>
               </div>
             </div>
@@ -910,15 +976,15 @@ export default function CommandCenter({ onNavigate, selectedPreset }) {
             <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-2">
-                  <span>🚀</span> Outbound Campaign Dispatched Successfully
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Outbound Campaign Dispatched Successfully</span>
                 </div>
                 <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300">
-                  Delivered (200 OK)
+                  Delivered
                 </span>
               </div>
-              <div className="font-mono text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                Delivery confirmed to: {campaignState.target_contact_email}{"\n"}
-                State Checkpoint: Stored permanently in Docker PostgreSQL!
+              <div className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed font-sans">
+                Delivery confirmed to: <strong>{campaignState.target_contact_email}</strong>. Saved to your campaign history.
               </div>
             </div>
           )}

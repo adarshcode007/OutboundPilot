@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { PRESETS } from '../data/presets';
+import { CheckCircle2, XCircle, ArrowRight, Building2, User, Mail, Sparkles, Filter } from 'lucide-react';
 
 export default function SimulatorSection({ onSelectPreset }) {
   const [activeSimIndex, setActiveSimIndex] = useState(0);
   const activeSim = PRESETS[activeSimIndex];
+
+  const isDisqualified = activeSim.company === "Bob's Bakery";
 
   return (
     <section id="simulator" className="py-20 md:py-28 bg-white dark:bg-[#0B0F17] border-t border-[#E5E7EB] dark:border-[#1E293B] transition-colors">
@@ -11,18 +14,18 @@ export default function SimulatorSection({ onSelectPreset }) {
         {/* Section Header */}
         <div className="max-w-2xl mb-12">
           <div className="text-xs font-semibold tracking-wider uppercase text-[#3B6BF0] mb-2">
-            Interactive Simulator
+            Interactive Preview
           </div>
           <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight leading-tight mb-4">
-            See autonomous decision making in action.
+            See how the system decides what to send.
           </h2>
           <p className="text-base md:text-lg text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
-            Select an account archetype below to verify how multi-agent guardrails qualify leads and halt spam before it starts.
+            Select a prospect scenario below to see how smart qualification filters protect your time and ensure you only reach out to high-potential accounts.
           </p>
         </div>
 
         {/* Simulator Box */}
-        <div className="bg-[#F5F5FA] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 md:p-8">
+        <div className="bg-[#FAFBFD] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 md:p-8 shadow-xs">
           {/* Archetype Selector Tabs */}
           <div className="flex flex-wrap gap-2 mb-8 border-b border-[#E5E7EB] dark:border-[#1E293B] pb-4">
             {PRESETS.map((p, idx) => {
@@ -31,12 +34,13 @@ export default function SimulatorSection({ onSelectPreset }) {
                 <button
                   key={idx}
                   onClick={() => setActiveSimIndex(idx)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                     isActive
                       ? "bg-white dark:bg-[#1E293B] text-[#0B1220] dark:text-white shadow-xs border border-[#E5E7EB] dark:border-gray-700"
                       : "text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-white hover:bg-white/60 dark:hover:bg-[#161F33]"
                   }`}
                 >
+                  <Building2 className="w-3.5 h-3.5 text-gray-400" />
                   <span>{p.company}</span>
                   <span
                     className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${
@@ -57,14 +61,15 @@ export default function SimulatorSection({ onSelectPreset }) {
           {/* Simulator Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Column: Account Spec & Evaluation */}
-            <div className="lg:col-span-5 bg-white dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B] rounded-xl p-6 shadow-xs">
-              <div className="flex items-start justify-between mb-4">
+            <div className="lg:col-span-5 bg-white dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B] rounded-xl p-6 shadow-xs space-y-5">
+              <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                     {activeSim.company}
                   </h3>
-                  <div className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-0.5">
-                    {activeSim.role} • {activeSim.email}
+                  <div className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{activeSim.role}</span>
                   </div>
                 </div>
                 <span
@@ -80,74 +85,87 @@ export default function SimulatorSection({ onSelectPreset }) {
                 </span>
               </div>
 
-              <p className="text-sm text-[#4B5563] dark:text-[#94A3B8] leading-relaxed mb-6">
+              <p className="text-xs sm:text-sm text-[#4B5563] dark:text-[#94A3B8] leading-relaxed">
                 {activeSim.desc}
               </p>
 
-              <div className="p-4 rounded-lg bg-[#F5F5FA] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] mb-6">
-                <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] uppercase tracking-wide mb-1.5">
-                  Pipeline Decision:
+              {/* Decision Box */}
+              <div className="p-4 rounded-xl bg-[#F5F5FA] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B]">
+                <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                  <span>Automated System Decision:</span>
                 </div>
                 <div
-                  className={`text-xs font-medium ${
-                    activeSim.company === "Bob's Bakery"
+                  className={`text-xs font-medium leading-relaxed ${
+                    isDisqualified
                       ? "text-rose-600 dark:text-rose-400"
                       : "text-emerald-700 dark:text-emerald-400"
                   }`}
                 >
-                  {activeSim.company === "Bob's Bakery"
-                    ? "→ Aborts early at Step 2 (Analyst). Protects sender reputation & saves tokens."
-                    : "→ Qualified. Executes web recon, passes 8/10 Judge, pauses for HITL review."}
+                  {isDisqualified
+                    ? "→ Filtered Out Automatically: Does not match target criteria. Stops before writing or sending any email to protect your sender reputation."
+                    : "→ High Match Qualified: Gathers real-time company news, crafts a personalized pitch, and queues it for your review."}
                 </div>
               </div>
 
               <button
-                className="w-full bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-2"
-                onClick={() => onSelectPreset(activeSim)}
+                onClick={() => onSelectPreset && onSelectPreset(activeSim)}
+                className="w-full bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] font-medium text-xs sm:text-sm py-2.5 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2"
               >
-                <span>Test {activeSim.company} in Live Workspace</span>
-                <span>→</span>
+                <span>Try this prospect in workspace</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Right Column: State Machine JSON Snapshot */}
-            <div className="lg:col-span-7 bg-[#080C14] border border-gray-800 text-gray-200 rounded-xl p-6 font-mono text-xs leading-relaxed overflow-x-auto shadow-sm">
-              <div className="text-gray-500 mb-3 border-b border-gray-800 pb-2 flex items-center justify-between">
-                <span>// LangGraph State Machine Checkpoint ({activeSim.company})</span>
-                <span className="text-[10px] uppercase text-emerald-400">PostgreSQL Checked</span>
-              </div>
-              <div className="space-y-1.5">
-                <div>
-                  <span className="text-sky-300">target_account:</span>{" "}
-                  <span className="text-amber-200">"{activeSim.company}"</span>
+            {/* Right Column: Visual Outcome */}
+            <div className="lg:col-span-7 bg-white dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B] rounded-xl p-6 shadow-xs">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
+                  Outreach Output Preview
                 </div>
-                <div>
-                  <span className="text-sky-300">target_executive:</span>{" "}
-                  <span className="text-amber-200">"{activeSim.name} ({activeSim.role})"</span>
-                </div>
-                <div>
-                  <span className="text-sky-300">analyst_score:</span>{" "}
-                  <span className={activeSim.company === "Bob's Bakery" ? "text-rose-400" : "text-emerald-400"}>
-                    {activeSim.company === "Bob's Bakery" ? "2/10 [DISQUALIFIED - EARLY EXIT]" : "9/10 [QUALIFIED]"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sky-300">evaluator_guardrail:</span>{" "}
-                  <span className="text-emerald-400">
-                    {activeSim.company === "Bob's Bakery" ? "SKIPPED_EARLY_EXIT" : "8/10 PASS (Grounding: 9/10, Deliv: 9/10)"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sky-300">hitl_checkpoint:</span>{" "}
-                  <span className="text-amber-300">
-                    {activeSim.company === "Bob's Bakery" ? "NONE" : "PAUSED_BEFORE_DISPATCH"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sky-300">audit_postgres_id:</span>{" "}
-                  <span className="text-gray-400">"camp_a7e2b109"</span>
+                <div className="text-[11px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[#4B5563] dark:text-gray-300">
+                  {isDisqualified ? 'Status: Filtered' : 'Status: Ready for Approval'}
                 </div>
               </div>
+
+              {isDisqualified ? (
+                <div className="p-8 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+                    <XCircle className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-semibold text-sm text-[#0B1220] dark:text-white">
+                    Outreach Halted (Score 2/10)
+                  </h4>
+                  <p className="text-xs text-[#6B7280] dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+                    Bob's Bakery is a local retail food business with no active software engineering footprint. The system automatically disqualified this lead to prevent sending irrelevant cold emails.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 font-sans text-xs text-[#1F2937] dark:text-gray-200 leading-relaxed bg-[#FAFBFD] dark:bg-[#111827]/60 p-4 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B]">
+                  <div className="font-semibold text-[#0B1220] dark:text-white pb-2 border-b border-[#E5E7EB]/60 dark:border-[#1E293B]/60">
+                    Subject: {activeSim.company.toLowerCase()} platform &amp; automation
+                  </div>
+
+                  <p>Hi {activeSim.name.split(" ")[0]},</p>
+
+                  <p className="text-[#4B5563] dark:text-gray-300">
+                    Noticed your team's recent expansion in engineering and modern digital infrastructure.
+                  </p>
+
+                  <p className="text-[#3B6BF0] dark:text-blue-400 font-medium">
+                    We help companies automate outbound sales research and outreach, reducing manual research time by 80% while keeping every message factually grounded.
+                  </p>
+
+                  <p className="text-[#4B5563] dark:text-gray-300">
+                    Open to seeing how similar teams handle this, or is this not a priority right now?
+                  </p>
+
+                  <div className="pt-2 text-[11px] text-[#6B7280] dark:text-gray-400">
+                    <div>Best,</div>
+                    <div className="font-semibold text-[#0B1220] dark:text-white">David Miller</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

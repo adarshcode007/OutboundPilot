@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../apiClient';
+import { 
+  Target, Briefcase, Sparkles, Bot, TrendingUp, Cloud, User, 
+  Lightbulb, Save, Check, Search, PenLine, ShieldCheck, Mail, 
+  ExternalLink, CheckCircle2, AlertCircle, Info, X
+} from 'lucide-react';
 
 export default function CampaignProfileStudio({ onProfileUpdated }) {
   const [loading, setLoading] = useState(true);
@@ -68,7 +73,7 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
     });
     setNotice({
       type: 'info',
-      text: `Loaded preset: "${presetKey.replace('_', ' ')}". Click "Save Profile & Update Agents" to activate it for all pipeline runs.`,
+      text: `Loaded preset: "${presetKey.replace('_', ' ')}". Click "Save Profile & Update Settings" to activate it for all outreach runs.`,
     });
   };
 
@@ -88,7 +93,7 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
         const data = await res.json();
         setNotice({
           type: 'success',
-          text: 'Campaign profile saved successfully! The Researcher, ICP Analyst, Copywriter, and Evaluator agents are now aligned with your goals.',
+          text: 'Campaign profile saved successfully! Your AI team is now aligned with your goals.',
         });
         if (onProfileUpdated) {
           onProfileUpdated(data.profile);
@@ -126,14 +131,20 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
           }`}
         >
           <div className="flex items-center gap-2">
-            <span>{notice.type === 'success' ? '✓' : notice.type === 'info' ? 'ℹ' : '⚠'}</span>
+            {notice.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : notice.type === 'info' ? (
+              <Info className="w-4 h-4 text-blue-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+            )}
             <span>{notice.text}</span>
           </div>
           <button
             onClick={() => setNotice(null)}
             className="opacity-70 hover:opacity-100 p-1"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -143,16 +154,18 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E5E7EB] dark:border-[#1E293B]">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xl">🎯</span>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center">
+                <Target className="w-4 h-4" />
+              </div>
               <h2 className="font-serif text-xl text-[#0B1220] dark:text-[#F8FAFC]">
-                Offer &amp; Persona Studio
+                Offer &amp; Campaign Profile
               </h2>
               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-[#3B6BF0] border border-blue-200 dark:border-blue-800">
-                Multi-Agent Grounding
+                Personalized Targeting
               </span>
             </div>
             <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] max-w-xl">
-              Configure what you are pitching. The Researcher gathers targeted intelligence, the ICP Analyst scores fit against your exact criteria, and the Copywriter crafts high-converting pitches tailored to this profile.
+              Tell the AI what you are offering or looking for. The research, scoring, and email writing will automatically personalize themselves around your exact background and goals.
             </p>
           </div>
 
@@ -167,8 +180,8 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
                   : 'text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC]'
               }`}
             >
-              <span>💼</span>
-              <span>B2B Offer Mode</span>
+              <Briefcase className="w-3.5 h-3.5 text-[#3B6BF0]" />
+              <span>B2B Business Offer</span>
             </button>
             <button
               type="button"
@@ -179,7 +192,7 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
                   : 'text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC]'
               }`}
             >
-              <span>🚀</span>
+              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
               <span>Job Seeker Mode</span>
             </button>
           </div>
@@ -188,8 +201,11 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
         {/* 1-Click Preset Templates */}
         <div className="pt-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] mb-3 flex items-center justify-between">
-            <span>⚡ 1-Click Profile Presets</span>
-            <span className="text-[10px] lowercase text-[#9CA3AF]">(click to pre-fill)</span>
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#3B6BF0]" />
+              <span>Quick Template Presets</span>
+            </span>
+            <span className="text-[10px] text-[#9CA3AF]">(click to fill form)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <button
@@ -198,11 +214,11 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
               className="p-3 text-left rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] hover:border-[#3B6BF0] dark:hover:border-[#3B6BF0] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition-all group"
             >
               <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] group-hover:text-[#3B6BF0]">
-                <span>💼</span>
+                <Briefcase className="w-3.5 h-3.5 text-purple-500" />
                 <span>AI / Full-Stack Engineer</span>
               </div>
               <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1 line-clamp-2">
-                Job outreach targeting hiring leads with Python, React &amp; LLM stack.
+                Outreach for developer roles with Python, React &amp; AI stack.
               </div>
             </button>
 
@@ -212,11 +228,11 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
               className="p-3 text-left rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] hover:border-[#3B6BF0] dark:hover:border-[#3B6BF0] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition-all group"
             >
               <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] group-hover:text-[#3B6BF0]">
-                <span>🤖</span>
+                <Bot className="w-3.5 h-3.5 text-[#3B6BF0]" />
                 <span>Agentic AI Agency</span>
               </div>
               <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1 line-clamp-2">
-                Autonomous SDR pipeline service for high-growth B2B tech scale-ups.
+                Outbound pipeline automation for high-growth tech companies.
               </div>
             </button>
 
@@ -226,11 +242,11 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
               className="p-3 text-left rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] hover:border-[#3B6BF0] dark:hover:border-[#3B6BF0] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition-all group"
             >
               <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] group-hover:text-[#3B6BF0]">
-                <span>📈</span>
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
                 <span>B2B Pipeline Agency</span>
               </div>
               <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1 line-clamp-2">
-                Pay-for-performance cold email outbound booking 15-30 sales demos/mo.
+                High-converting email outreach booking 15-30 sales demos/mo.
               </div>
             </button>
 
@@ -240,7 +256,7 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
               className="p-3 text-left rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] hover:border-[#3B6BF0] dark:hover:border-[#3B6BF0] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition-all group"
             >
               <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] group-hover:text-[#3B6BF0]">
-                <span>☁️</span>
+                <Cloud className="w-3.5 h-3.5 text-indigo-500" />
                 <span>Cloud &amp; DevOps Advisory</span>
               </div>
               <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1 line-clamp-2">
@@ -253,13 +269,13 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
 
       {/* Main Studio Form */}
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Columns: Identity, Offer, ICP & Proof */}
+        {/* Left 2 Columns: Identity, Offer, Target & Proof */}
         <div className="lg:col-span-2 space-y-6">
           {/* Card 1: Sender Identity */}
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-4 transition-colors">
             <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-2">
-              <span>👤</span>
-              <span>1. Sender Identity &amp; Sign-off</span>
+              <User className="w-3.5 h-3.5 text-[#3B6BF0]" />
+              <span>1. Your Sender Identity &amp; Sign-off</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -293,13 +309,13 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
 
               <div>
                 <label className="block text-xs font-medium text-[#0B1220] dark:text-[#F8FAFC] mb-1.5">
-                  Company / Organization
+                  Company or Brand
                 </label>
                 <input
                   type="text"
                   value={formData.company_or_brand}
                   onChange={(e) => setFormData({ ...formData, company_or_brand: e.target.value })}
-                  placeholder={isJobSeeker ? "e.g. Open to Roles / Freelance" : "e.g. Acme AI Solutions"}
+                  placeholder={isJobSeeker ? "e.g. Open to Roles" : "e.g. Acme Solutions"}
                   className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] text-[#0B1220] dark:text-[#F8FAFC] focus:outline-hidden focus:border-[#3B6BF0]"
                 />
               </div>
@@ -310,17 +326,17 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-4 transition-colors">
             <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <span>{isJobSeeker ? '💼' : '💡'}</span>
-                <span>2. {isJobSeeker ? 'Candidate Expertise & Technical Stack' : 'Product / Service Offer'}</span>
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                <span>2. {isJobSeeker ? 'Your Skills & Technical Background' : 'What You Sell / Offer Description'}</span>
               </span>
-              <span className="text-[10px] lowercase text-[#9CA3AF]">
-                {isJobSeeker ? 'used by copywriter for candidate pitch' : 'used by copywriter for solution pitch'}
+              <span className="text-[10px] text-[#9CA3AF]">
+                {isJobSeeker ? 'used for candidate pitch' : 'used for solution pitch'}
               </span>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#0B1220] dark:text-[#F8FAFC] mb-1.5">
-                {isJobSeeker ? 'Summary of Your Engineering Skills & Specialties' : 'Detailed Offer Description & Problem Solved'}
+                {isJobSeeker ? 'Summary of Your Engineering Experience & Stack' : 'Description of What You Sell & Problems Solved'}
               </label>
               <textarea
                 rows={3}
@@ -328,8 +344,8 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
                 onChange={(e) => setFormData({ ...formData, offer_description: e.target.value })}
                 placeholder={
                   isJobSeeker
-                    ? "Full-stack engineer with deep expertise in LangGraph multi-agent architectures, FastAPI, React 19, and production PostgreSQL checkpointer state machines."
-                    : "Autonomous multi-agent SDR workforce that automates pipeline generation, lead research, and executive outbound copywriting."
+                    ? "Full-stack engineer with deep expertise in AI workflows, FastAPI, React 19, and scalable database systems."
+                    : "Autonomous sales research platform that automates lead enrichment, qualification, and executive outreach."
                 }
                 className="w-full text-xs p-3 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] text-[#0B1220] dark:text-[#F8FAFC] focus:outline-hidden focus:border-[#3B6BF0] leading-relaxed"
                 required
@@ -337,21 +353,21 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
             </div>
           </div>
 
-          {/* Card 3: Target ICP Qualification Criteria */}
+          {/* Card 3: Target Qualification Criteria */}
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-4 transition-colors">
             <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <span>🎯</span>
-                <span>3. Target ICP (Ideal Prospect / Company) Criteria</span>
+                <Target className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                <span>3. Ideal Company Profile (Who is a good fit?)</span>
               </span>
-              <span className="text-[10px] font-bold text-[#3B6BF0]">
-                governs ICP Analyst Agent scoring
+              <span className="text-[10px] font-semibold text-[#3B6BF0]">
+                Governs Smart Match Score
               </span>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-[#0B1220] dark:text-[#F8FAFC] mb-1.5">
-                {isJobSeeker ? 'Target Hiring Companies, Roles & Engineering Stack' : 'Target Customer Criteria (Industry, Size, Trigger Events)'}
+                {isJobSeeker ? 'Target Hiring Companies, Engineering Roles & Languages' : 'Target Customer Criteria (Industry, Size, Triggers)'}
               </label>
               <textarea
                 rows={3}
@@ -359,14 +375,14 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
                 onChange={(e) => setFormData({ ...formData, target_icp_criteria: e.target.value })}
                 placeholder={
                   isJobSeeker
-                    ? "Tech companies, AI startups, and scale-ups hiring Full-Stack Engineers, AI Engineers, or Backend Developers working with Python & React."
-                    : "High-growth B2B SaaS, fintech, and tech scale-ups with 20-500 employees looking to scale sales without ballooning headcount."
+                    ? "Tech startups, scale-ups, and AI companies hiring Full-Stack Engineers, AI Engineers, or Python/React Developers."
+                    : "High-growth B2B software, fintech, and modern tech companies with 20-500 employees looking to scale sales."
                 }
                 className="w-full text-xs p-3 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] text-[#0B1220] dark:text-[#F8FAFC] focus:outline-hidden focus:border-[#3B6BF0] leading-relaxed"
                 required
               />
               <p className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1.5">
-                The ICP Analyst agent will score target accounts (1-10) against this criteria and automatically disqualify accounts below 5/10.
+                The system scores target companies (1 to 10) against this profile and automatically filters out accounts that don't match.
               </p>
             </div>
           </div>
@@ -374,14 +390,14 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
           {/* Card 4: Proof Points & Links */}
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 shadow-xs space-y-4 transition-colors">
             <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-2">
-              <span>📊</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#3B6BF0]" />
               <span>4. Concrete Proof Points &amp; Links</span>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-[#0B1220] dark:text-[#F8FAFC] mb-1.5">
-                  Key Value Metrics / Concrete Proof Points
+                  Key Value Metrics / Concrete Achievements
                 </label>
                 <textarea
                   rows={2}
@@ -389,8 +405,8 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
                   onChange={(e) => setFormData({ ...formData, key_benefits: e.target.value })}
                   placeholder={
                     isJobSeeker
-                      ? "Architected production-ready multi-agent pipelines, reduced inference token expenditure by 60%, and built resilient PostgreSQL checkpointer state machines."
-                      : "Cuts manual lead research time by 80%, saves 4,000 LLM tokens per exit with automated ICP guardrails, and books high-intent meetings."
+                      ? "Architected production-ready multi-agent pipelines, reduced AI token costs by 60%, and built resilient database state machines."
+                      : "Cuts manual lead research time by 80%, protects domain reputation with automated fit checks, and books high-intent meetings."
                   }
                   className="w-full text-xs p-3 rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-[#FAFBFD] dark:bg-[#0E1422] text-[#0B1220] dark:text-[#F8FAFC] focus:outline-hidden focus:border-[#3B6BF0] leading-relaxed"
                 />
@@ -398,7 +414,7 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
 
               <div>
                 <label className="block text-xs font-medium text-[#0B1220] dark:text-[#F8FAFC] mb-1.5">
-                  Portfolio / GitHub / Case Study / Website URL
+                  Portfolio / GitHub / Website Link
                 </label>
                 <input
                   type="url"
@@ -418,35 +434,38 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
               onClick={fetchProfile}
               className="px-4 py-2 text-xs font-medium text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] rounded-xl hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] transition-colors"
             >
-              Reset to Saved Profile
+              Reset to Saved
             </button>
 
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-[#3B6BF0] hover:bg-blue-600 text-white shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-[#3B6BF0] hover:bg-blue-600 text-white shadow-sm hover:shadow transition-all disabled:opacity-50"
             >
               {saving ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                  <span>Saving &amp; Updating Agents...</span>
+                  <span>Saving Changes...</span>
                 </>
               ) : (
                 <>
-                  <span>💾</span>
-                  <span>Save Profile &amp; Update Agents</span>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Profile &amp; Update Settings</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Right Column: Multi-Agent Adaptation Simulator */}
+        {/* Right Column: AI Team Simulator & Live Preview */}
         <div className="space-y-6">
-          {/* Agent Adaptation Overview Card */}
+          {/* How AI Team Adapts Card */}
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-5 shadow-xs space-y-4 transition-colors">
             <div className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center justify-between">
-              <span>🤖 How Agents Will Adapt</span>
+              <span className="flex items-center gap-1.5">
+                <Bot className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                <span>How Your AI Team Works</span>
+              </span>
               <span className="text-[10px] font-mono text-[#3B6BF0]">
                 {formData.campaign_type}
               </span>
@@ -455,47 +474,47 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] mb-1">
-                  <span>🔍</span>
-                  <span>Researcher Agent</span>
+                  <Search className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                  <span>Company Research</span>
                 </div>
                 <p className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
                   {isJobSeeker
-                    ? 'Researches company tech stack, engineering languages/frameworks, recent team expansions, and open developer roles.'
-                    : 'Researches enterprise growth signals, cloud infrastructure, scaling bottlenecks, and operational challenges.'}
+                    ? 'Researches company engineering stack, frameworks used, recent technical milestones, and open roles.'
+                    : 'Researches company growth signals, cloud infrastructure, bottlenecks, and expansion initiatives.'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] mb-1">
-                  <span>🎯</span>
-                  <span>ICP Analyst Agent</span>
+                  <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Match Qualification</span>
                 </div>
                 <p className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
                   {isJobSeeker
-                    ? 'Evaluates whether company has matching engineering stack and career openings matching your background.'
-                    : 'Evaluates if company matches your target ICP size, industry, and need for your product/service.'}
+                    ? 'Evaluates whether company has technical alignment and openings matching your background.'
+                    : 'Evaluates if company matches your ideal client size, industry, and acute need for your offer.'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] mb-1">
-                  <span>✍️</span>
-                  <span>Copywriter Agent</span>
+                  <PenLine className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Personalized Email Pitch</span>
                 </div>
                 <p className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
                   {isJobSeeker
-                    ? 'Drafts personalized candidate outreach highlighting relevant projects, metrics, and portfolio links.'
-                    : 'Drafts PAS/BAB B2B outreach highlighting verified prospect bottlenecks and your specific solution.'}
+                    ? 'Drafts candidate outreach highlighting your real projects, metrics, and portfolio links.'
+                    : 'Drafts high-converting 3-paragraph outreach highlighting verified company challenges and your solution.'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0E1422] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="flex items-center gap-1.5 font-semibold text-xs text-[#0B1220] dark:text-[#F8FAFC] mb-1">
-                  <span>⚖️</span>
-                  <span>Compliance Judge</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Safety &amp; Tone Review</span>
                 </div>
                 <p className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] leading-relaxed">
-                  Checks that statements about the prospect are grounded in verified research and guarantees a 75-110 word 3-paragraph format.
+                  Guarantees every statement about the prospect is true, removes spam phrases, and keeps copy under 110 words.
                 </p>
               </div>
             </div>
@@ -504,11 +523,12 @@ export default function CampaignProfileStudio({ onProfileUpdated }) {
           {/* Live Dynamic Email Preview Mockup */}
           <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-5 shadow-xs space-y-3 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-                ✉️ Live Email Preview
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8] flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                <span>Live Sample Email</span>
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                PAS Framework
+                Primary Inbox Ready
               </span>
             </div>
 

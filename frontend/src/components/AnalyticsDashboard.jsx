@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../apiClient';
+import { BarChart3, RefreshCw, AlertCircle, Zap, Target, ShieldCheck, MessageSquare, TrendingUp, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState(null);
@@ -72,16 +73,19 @@ export default function AnalyticsDashboard() {
       <div className="bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs transition-colors">
         <div>
           <div className="flex items-center gap-3">
-            <span className="text-2xl">📊</span>
+            <div className="w-8 h-8 rounded-lg bg-[#3B6BF0]/10 flex items-center justify-center text-[#3B6BF0]">
+              <BarChart3 className="w-4 h-4" />
+            </div>
             <h2 className="font-serif text-2xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-              Workforce ROI &amp; Intelligence Economics
+              Workforce ROI &amp; Performance
             </h2>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
-              PostgreSQL Live Checkpoints
+              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              Live Sync
             </span>
           </div>
           <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
-            Real-time telemetry tracking early-exit token savings, ICP qualification funnel, deliverability health, and inbound reply sentiment.
+            Real-time visibility into quota savings, qualified prospects, inbox deliverability rates, and incoming prospect responses.
           </p>
         </div>
 
@@ -92,16 +96,18 @@ export default function AnalyticsDashboard() {
           <button
             onClick={fetchAnalytics}
             disabled={loading}
-            className="bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] text-xs font-medium px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] transition-colors"
+            className="inline-flex items-center gap-1.5 bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] text-xs font-medium px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] transition-colors"
           >
-            {loading ? "Refreshing..." : "↻ Refresh Metrics"}
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>{loading ? "Refreshing..." : "Refresh Metrics"}</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-medium">
-          ⚠️ <strong>Analytics API Error:</strong> {error}
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span><strong>Analytics Notice:</strong> {error}</span>
         </div>
       )}
 
@@ -111,18 +117,20 @@ export default function AnalyticsDashboard() {
         <div className="bg-[#F5F5FA] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 transition-all hover:border-gray-300 dark:hover:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-              Token-Saver ROI
+              Quota &amp; Cost Savings
             </span>
-            <span className="text-base">⚡</span>
+            <div className="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <Zap className="w-3.5 h-3.5" />
+            </div>
           </div>
           <div className="font-serif text-3xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
             {roi.tokens_saved_formatted}
           </div>
           <div className="text-xs text-[#3B6BF0] font-medium mt-1">
-            ~{roi.free_tier_days_preserved} Days Compute Preserved
+            ~{roi.free_tier_days_preserved} Days Capacity Preserved
           </div>
           <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-2 leading-relaxed">
-            Preserved by Node 2 early-exit skipping 6,500 tokens/disqualified account.
+            Automatically saved by filtering out low-fit prospects before email generation.
           </div>
         </div>
 
@@ -130,18 +138,20 @@ export default function AnalyticsDashboard() {
         <div className="bg-[#F5F5FA] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 transition-all hover:border-gray-300 dark:hover:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-              ICP Fit Funnel
+              Prospect Match Fit
             </span>
-            <span className="text-base">🎯</span>
+            <div className="w-6 h-6 rounded-md bg-[#3B6BF0]/10 flex items-center justify-center text-[#3B6BF0]">
+              <Target className="w-3.5 h-3.5" />
+            </div>
           </div>
           <div className="font-serif text-3xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
             {pipeline.qualification_rate_pct}%
           </div>
           <div className="text-xs text-[#0B1220] dark:text-[#F8FAFC] font-medium mt-1">
-            {pipeline.qualified} Qualified / {pipeline.disqualified} Disqualified
+            {pipeline.qualified} Qualified / {pipeline.disqualified} Filtered Out
           </div>
           <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-2 leading-relaxed">
-            Avg ICP: <strong className="text-[#0B1220] dark:text-[#F8FAFC]">{quality.avg_icp_score}/10</strong> | AI Judge: <strong className="text-[#0B1220] dark:text-[#F8FAFC]">{quality.avg_eval_score}/10</strong>
+            Avg Match: <strong className="text-[#0B1220] dark:text-[#F8FAFC]">{quality.avg_icp_score}/10</strong> | Accuracy: <strong className="text-[#0B1220] dark:text-[#F8FAFC]">{quality.avg_eval_score}/10</strong>
           </div>
         </div>
 
@@ -149,9 +159,11 @@ export default function AnalyticsDashboard() {
         <div className="bg-[#F5F5FA] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1E293B] rounded-2xl p-6 transition-all hover:border-gray-300 dark:hover:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
-              Deliverability Health
+              Inbox Deliverability
             </span>
-            <span className="text-base">🛡️</span>
+            <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </div>
           </div>
           <div className="font-serif text-3xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
             {deliverability.deliverability_rate_pct}%
@@ -160,7 +172,7 @@ export default function AnalyticsDashboard() {
             {deliverability.delivered} Delivered / {deliverability.total_dispatches} Dispatched
           </div>
           <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-2 leading-relaxed">
-            <strong className="text-rose-600 dark:text-rose-400">{deliverability.guardrail_blocked} Hard Bounces Blocked</strong> before transmission.
+            <strong className="text-rose-600 dark:text-rose-400">{deliverability.guardrail_blocked} Invalid Inboxes Blocked</strong> before sending.
           </div>
         </div>
 
@@ -170,7 +182,9 @@ export default function AnalyticsDashboard() {
             <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#94A3B8]">
               Inbound Replies
             </span>
-            <span className="text-base">💬</span>
+            <div className="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+              <MessageSquare className="w-3.5 h-3.5" />
+            </div>
           </div>
           <div className="font-serif text-3xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
             {engagement.total_replies}
@@ -179,7 +193,7 @@ export default function AnalyticsDashboard() {
             {engagement.positive_replies} Positive ({engagement.total_replies > 0 ? Math.round((engagement.positive_replies / engagement.total_replies) * 100) : 0}%)
           </div>
           <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-2 leading-relaxed">
-            Autonomous sequence halted upon prospect response.
+            Outreach automatically pauses when a prospect responds.
           </div>
         </div>
       </div>
@@ -191,26 +205,28 @@ export default function AnalyticsDashboard() {
           <div>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
               <div className="flex items-center gap-2">
-                <span className="text-lg">⚡</span>
+                <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
                 <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-                  Token-Saver Architecture Economics
+                  Resource Efficiency &amp; Quota Protection
                 </h3>
               </div>
               <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#F5F5FA] dark:bg-[#161F33] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]">
-                4,000 Tokens / Exit
+                Fast Qualification Gate
               </span>
             </div>
 
             <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] leading-relaxed mb-5">
-              Standard AI SDRs execute full pitch generation and evaluator loops on every lead indiscriminately. 
-              Our <strong>Token-Saver ROI Engine</strong> intercepts disqualified leads at Node 2, completely bypassing subsequent agent steps.
+              Traditional tools waste credits generating cold pitches for prospects that don't match your criteria. 
+              Our system checks company qualification first, immediately filtering out non-fits to preserve your budget and sender reputation.
             </p>
 
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between">
                 <div>
                   <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-                    1. Copywriter Agent Bypass
+                    1. Email Generation Bypassed for Non-Fits
                   </div>
                   <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
                     Skipped customized cold pitch generation on low-fit leads
@@ -224,10 +240,10 @@ export default function AnalyticsDashboard() {
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between">
                 <div>
                   <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-                    2. Actor-Critic Evaluator Bypass
+                    2. Fact-Checking Bypassed for Non-Fits
                   </div>
                   <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
-                    Skipped multi-criteria rubric scoring &amp; hallucination checks
+                    Skipped multi-point verification &amp; quality scoring on rejected prospects
                   </div>
                 </div>
                 <div className="font-mono text-xs font-bold text-[#0B1220] dark:text-[#F8FAFC]">
@@ -239,7 +255,7 @@ export default function AnalyticsDashboard() {
 
           <div className="mt-6 p-4 rounded-xl bg-[#F5F5FA] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between">
             <span className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-              Total Inference Compute Preserved:
+              Total Quota Preserved:
             </span>
             <span className="font-mono text-sm font-bold text-[#3B6BF0]">
               {roi.tokens_saved_formatted}
@@ -252,7 +268,9 @@ export default function AnalyticsDashboard() {
           <div>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E5E7EB] dark:border-[#1E293B]">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🎯</span>
+                <div className="w-7 h-7 rounded-lg bg-[#3B6BF0]/10 flex items-center justify-center text-[#3B6BF0]">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </div>
                 <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                   Pipeline Funnel &amp; Engagement
                 </h3>
@@ -265,9 +283,9 @@ export default function AnalyticsDashboard() {
             {/* Stage Progress Bar: Qualified vs Disqualified */}
             <div className="mb-6">
               <div className="flex justify-between text-xs text-[#6B7280] dark:text-[#94A3B8] mb-2 font-medium">
-                <span>ICP Qualification Funnel</span>
+                <span>Prospect Qualification Funnel</span>
                 <span className="font-mono text-[#0B1220] dark:text-[#F8FAFC]">
-                  {pipeline.qualified} Qualified / {pipeline.disqualified} Disqualified
+                  {pipeline.qualified} Qualified / {pipeline.disqualified} Filtered Out
                 </span>
               </div>
               <div className="h-2.5 bg-[#F5F5FA] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B] rounded-full overflow-hidden flex">
@@ -294,7 +312,7 @@ export default function AnalyticsDashboard() {
               </div>
               <div className="p-3 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
                 <div className="text-[11px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">
-                  Approved / Dispatched
+                  Approved &amp; Dispatched
                 </div>
                 <div className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] mt-1">
                   {pipeline.approved_or_dispatched} leads
@@ -310,7 +328,7 @@ export default function AnalyticsDashboard() {
               <div className="flex gap-2 flex-wrap">
                 {Object.keys(engagement.sentiment_breakdown || {}).length === 0 ? (
                   <div className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
-                    No inbound replies received yet. (Simulate one via Inbound Webhook).
+                    No inbound replies received yet.
                   </div>
                 ) : (
                   Object.entries(engagement.sentiment_breakdown).map(([sentiment, count]) => (
@@ -329,12 +347,15 @@ export default function AnalyticsDashboard() {
 
           {/* Deliverability Guardrail Status */}
           <div className="mt-4 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between text-xs">
-            <div>
-              <div className="font-semibold text-rose-700 dark:text-rose-400">
-                Hard-Bounce Prevention Guardrail
-              </div>
-              <div className="text-[11px] text-rose-600/80 dark:text-rose-400/70">
-                Unresolvable DNS domains safely intercepted before sending
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0" />
+              <div>
+                <div className="font-semibold text-rose-700 dark:text-rose-400">
+                  Domain Protection Guardrail
+                </div>
+                <div className="text-[11px] text-rose-600/80 dark:text-rose-400/70">
+                  Unresolvable email addresses safely blocked to protect your domain reputation
+                </div>
               </div>
             </div>
             <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 font-semibold text-[11px]">

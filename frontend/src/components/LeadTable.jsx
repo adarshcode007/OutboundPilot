@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../apiClient';
+import { Layers, Clock, RefreshCw, Sparkles, Sun, Search, Check, Send } from 'lucide-react';
 
 export default function LeadTable({
   leads = [],
@@ -127,13 +128,15 @@ export default function LeadTable({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-5 border-b border-[#E5E7EB] dark:border-[#1E293B]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xl">📋</span>
-            <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
-              Prioritized Target Lead Queue
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-[#3B6BF0] flex items-center justify-center">
+              <Layers className="w-4 h-4" />
+            </div>
+            <h3 className="font-serif text-lg sm:text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
+              Lead Queue &amp; Contacts
             </h3>
           </div>
-          <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-0.5">
-            Ranked by Smart Regex Priority Score (0–100) • Zero LLM tokens spent on triage
+          <p className="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
+            Ranked by Priority Score (0–100) • High value prospects first
           </p>
         </div>
 
@@ -141,8 +144,8 @@ export default function LeadTable({
         <div className="flex items-center gap-2.5 flex-wrap">
           {schedulerInfo && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#3B6BF0] border border-[#E5E7EB] dark:border-[#1E293B]">
-              <span>⏰</span>
-              <span><strong>{schedulerInfo.target_time} AM</strong> Auto-Drip</span>
+              <Clock className="w-3.5 h-3.5" />
+              <span><strong>{schedulerInfo.target_time} AM</strong> Daily Drip</span>
               {schedulerInfo.is_processing && (
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 animate-pulse ml-1">
                   Active
@@ -153,7 +156,7 @@ export default function LeadTable({
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#F5F5FA] dark:bg-[#161F33] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B]">
             <span className={`w-2 h-2 rounded-full ${quota.remaining_today > 0 ? "bg-emerald-500" : "bg-rose-500"}`}></span>
-            <span><strong>{quota.remaining_today} / {quota.daily_limit}</strong> Daily Quota</span>
+            <span><strong>{quota.remaining_today} / {quota.daily_limit}</strong> Sends Left Today</span>
           </div>
 
           <button
@@ -164,7 +167,7 @@ export default function LeadTable({
             className="p-1.5 rounded-lg text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] transition-colors"
             title="Refresh lead queue"
           >
-            ↻
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -175,26 +178,16 @@ export default function LeadTable({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Filter by company, role, or contact name..."
-          className="w-full sm:max-w-xs px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
+          className="w-full sm:max-w-xs px-3.5 py-2 text-xs rounded-xl border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0B0F17] text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0] transition-colors"
         />
 
         <div className="flex items-center gap-2 flex-wrap">
           {draftedCount > 0 && (
             <button
               onClick={onOpenBriefing}
-              className="bg-[#3B6BF0] hover:bg-[#2554D8] text-white text-xs font-medium px-3.5 py-2 rounded-lg transition-all shadow-xs flex items-center gap-1.5 active:scale-[0.98]"
+              className="bg-[#3B6BF0] hover:bg-blue-600 text-white text-xs font-medium px-3.5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 active:scale-[0.98]"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2" />
-                <path d="M12 20v2" />
-                <path d="M4.93 4.93l1.41 1.41" />
-                <path d="M17.66 17.66l1.41 1.41" />
-                <path d="M2 12h2" />
-                <path d="M20 12h2" />
-                <path d="M6.34 17.66l-1.41 1.41" />
-                <path d="M19.07 4.93l-1.41 1.41" />
-              </svg>
+              <Sun className="w-3.5 h-3.5" />
               <span>Morning Briefing ({draftedCount} Ready)</span>
             </button>
           )}
@@ -202,18 +195,18 @@ export default function LeadTable({
           <button
             onClick={handleTriggerCron}
             disabled={processing || quota.remaining_today <= 0}
-            className="bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] text-xs font-medium px-3.5 py-2 rounded-lg transition-colors border border-[#E5E7EB] dark:border-[#1E293B] disabled:opacity-50"
+            className="bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] text-xs font-medium px-3.5 py-2 rounded-xl transition-colors border border-[#E5E7EB] dark:border-[#1E293B] disabled:opacity-50"
           >
-            Run Scheduled Drip
+            Send Daily Batch
           </button>
 
           <button
             onClick={handleProcessSelected}
             disabled={processing || selectedIds.size === 0}
-            className="bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-xs font-medium px-3.5 py-2 rounded-lg transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 active:scale-[0.98]"
+            className="bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] text-xs font-medium px-3.5 py-2 rounded-xl transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 active:scale-[0.98]"
           >
-            <span>⚡</span>
-            <span>{processing ? "Orchestrating..." : `Launch Selected (${selectedIds.size})`}</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{processing ? "Researching..." : `Generate Selected (${selectedIds.size})`}</span>
           </button>
         </div>
       </div>
@@ -246,7 +239,7 @@ export default function LeadTable({
               <th className="py-3 px-4">Target Account</th>
               <th className="py-3 px-4">Executive Contact</th>
               <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4">AI Signals</th>
+              <th className="py-3 px-4">Target Signals</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#1E293B]">
@@ -309,7 +302,7 @@ export default function LeadTable({
                     </td>
                     <td className="py-3 px-4">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
                           lead.status === "DRAFTED"
                             ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
                             : lead.status === "APPROVED" || lead.status === "DISPATCHED"
@@ -319,7 +312,17 @@ export default function LeadTable({
                             : "bg-[#F5F5FA] dark:bg-[#161F33] text-[#6B7280] dark:text-[#94A3B8] border border-[#E5E7EB] dark:border-[#1E293B]"
                         }`}
                       >
-                        {lead.status === "DRAFTED" ? "Ready for Review" : lead.status}
+                        {lead.status === "DRAFTED" 
+                          ? "Review Ready" 
+                          : lead.status === "DISQUALIFIED" 
+                          ? "Not a Match" 
+                          : lead.status === "APPROVED" 
+                          ? "Approved" 
+                          : lead.status === "DISPATCHED" 
+                          ? "Sent" 
+                          : lead.status === "QUEUED" 
+                          ? "Queued" 
+                          : lead.status}
                       </span>
                     </td>
                     <td className="py-3 px-4">

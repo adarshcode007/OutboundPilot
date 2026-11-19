@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Lock, X } from 'lucide-react';
 
 const API_URL = typeof window !== 'undefined' && window.location.port === "5173" ? "" : "http://localhost:8000";
 
@@ -59,21 +60,23 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         <div className="px-6 pt-6 pb-4 border-b border-[#E5E7EB] dark:border-[#1E293B] flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🔐</span>
+              <div className="w-7 h-7 rounded-lg bg-[#3B6BF0]/10 flex items-center justify-center text-[#3B6BF0]">
+                <Lock className="w-3.5 h-3.5" />
+              </div>
               <h3 className="font-serif text-2xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
                 {isRegister ? "Create SDR Account" : "Sign In to SDR Workforce"}
               </h3>
             </div>
             <p className="text-xs text-[#6B7280] dark:text-[#94A3B8]">
-              Protected with JWT in secure httpOnly cookies
+              Protected by enterprise-grade secure session encryption
             </p>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="text-[#9CA3AF] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] p-1 rounded-md text-lg leading-none transition-colors"
+              className="text-[#9CA3AF] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              ×
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { apiFetch } from '../apiClient';
+import { Sun, Download, X, Check, CheckCircle2, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
   // Only review leads that are DRAFTED (awaiting review)
@@ -156,17 +157,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
         <div className="px-6 py-4 border-b border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-between bg-white dark:bg-[#0E1422]">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#FAFBFD] dark:bg-[#161F33] border border-[#E5E7EB] dark:border-[#1E293B] flex items-center justify-center text-[#3B6BF0]">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2" />
-                <path d="M12 20v2" />
-                <path d="M4.93 4.93l1.41 1.41" />
-                <path d="M17.66 17.66l1.41 1.41" />
-                <path d="M2 12h2" />
-                <path d="M20 12h2" />
-                <path d="M6.34 17.66l-1.41 1.41" />
-                <path d="M19.07 4.93l-1.41 1.41" />
-              </svg>
+              <Sun className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-serif text-xl font-normal text-[#0B1220] dark:text-[#F8FAFC] tracking-tight">
@@ -183,15 +174,16 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCsv}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] dark:bg-[#161F33] hover:bg-[#EBEBF2] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-[#F5F5FA] dark:bg-[#161F33] hover:bg-[#EBEBF2] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] transition-colors"
             >
-              📥 Export CSV
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
             </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-[#6B7280] dark:text-[#94A3B8] hover:text-[#0B1220] dark:hover:text-[#F8FAFC] hover:bg-[#F5F5FA] dark:hover:bg-[#161F33] transition-colors"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -200,7 +192,7 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {reviewLeads.length === 0 ? (
             <div className="text-center py-16">
-              <div className="text-4xl mb-3">🎉</div>
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
               <h4 className="font-serif text-2xl text-[#0B1220] dark:text-[#F8FAFC] mb-2">
                 All drafts reviewed and cleared!
               </h4>
@@ -217,8 +209,9 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
           ) : (
             <>
               {notice && (
-                <div className="p-3 rounded-lg bg-[#3B6BF0]/10 border border-[#3B6BF0]/20 text-[#3B6BF0] text-xs font-medium">
-                  {notice}
+                <div className="p-3 rounded-lg bg-[#3B6BF0]/10 border border-[#3B6BF0]/20 text-[#3B6BF0] text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{notice}</span>
                 </div>
               )}
 
@@ -241,10 +234,10 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <div className="text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC]">
-                      ICP: {currentLead.icp_fit_score || 8}/10
+                      Match Fit: {currentLead.icp_fit_score || 8}/10
                     </div>
                     <div className="text-[11px] text-[#6B7280] dark:text-[#94A3B8]">
-                      Judge: {currentLead.eval_score || 9}/10 (Grounded)
+                      Accuracy: {currentLead.eval_score || 9}/10 (Fact-Checked)
                     </div>
                   </div>
                 </div>
@@ -266,22 +259,24 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
 
               {/* AI Re-draft instruction */}
               <div className="p-4 rounded-xl bg-[#FAFBFD] dark:bg-[#0B0F17] border border-[#E5E7EB] dark:border-[#1E293B]">
-                <label className="block text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2">
-                  💬 Natural Language Revision for AI Copywriter (Optional)
+                <label className="block text-xs font-semibold text-[#0B1220] dark:text-[#F8FAFC] mb-2 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                  <span>Refinement Instructions for AI Assistant (Optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <input
                     value={critique}
                     onChange={(e) => setCritique(e.target.value)}
-                    placeholder="e.g. 'Make it punchier and mention our Docker PostgreSQL deployment'..."
+                    placeholder="e.g. 'Make it punchier and emphasize our quick implementation time'..."
                     className="flex-1 px-3.5 py-2 text-xs rounded-lg border border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#111827] text-[#0B1220] dark:text-[#F8FAFC] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-[#3B6BF0] focus:ring-1 focus:ring-[#3B6BF0]"
                   />
                   <button
                     onClick={() => handleAction("REDRAFT")}
                     disabled={actionLoading || !critique.trim()}
-                    className="px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] disabled:opacity-50 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-[#F5F5FA] hover:bg-[#EBEBF2] dark:bg-[#161F33] dark:hover:bg-[#1E293B] text-[#0B1220] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#1E293B] disabled:opacity-50 transition-colors"
                   >
-                    {actionLoading ? "Rewriting..." : "✨ Re-draft"}
+                    <Sparkles className="w-3.5 h-3.5 text-[#3B6BF0]" />
+                    <span>{actionLoading ? "Rewriting..." : "Revise Pitch"}</span>
                   </button>
                 </div>
               </div>
@@ -304,16 +299,18 @@ export default function MorningBriefing({ leads = [], onClose, onRefresh }) {
               <button
                 onClick={() => handleAction("REJECT")}
                 disabled={actionLoading}
-                className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors disabled:opacity-50"
               >
-                Reject (X)
+                <X className="w-3.5 h-3.5" />
+                <span>Pass (X)</span>
               </button>
               <button
                 onClick={() => handleAction("APPROVE")}
                 disabled={actionLoading}
-                className="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg bg-[#0B1220] hover:bg-[#1E293B] dark:bg-white dark:hover:bg-gray-100 text-white dark:text-[#0B1220] shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                {actionLoading ? "Dispatching..." : "Approve & Dispatch (↵)"}
+                <Check className="w-3.5 h-3.5" />
+                <span>{actionLoading ? "Dispatching..." : "Approve & Dispatch (↵)"}</span>
               </button>
             </div>
           </div>
